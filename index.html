@@ -523,7 +523,12 @@ function openForm(id) {
   if(id==='food-bdf') { g('fbdf-mes').value=month; updateFoodAutoFields('bdf'); }
   if(id==='food-sb') { g('fsb-mes').value=month; updateFoodAutoFields('sb'); }
 }
-function closeForm(id) { document.getElementById('form-'+id).style.display='none'; }
+function closeForm(id) {
+  document.getElementById('form-'+id).style.display='none';
+  // Restaurar botón guardar si estaba en modo edición
+  if(id==='diario-bdf'){const b=g('btn-save-dbdf');if(b){b.textContent='Guardar';b.onclick=()=>saveDiario('bdf');}}
+  if(id==='diario-sb'){const b=g('btn-save-dsb');if(b){b.textContent='Guardar';b.onclick=()=>saveDiario('sb');}}
+}
 
 // ── UTILS ──────────────────────────────────────────────────────
 function g(id){return document.getElementById(id);}
@@ -708,9 +713,12 @@ function renderDiarioTable(bar) {
   const tGastoFood=data.reduce((s,r)=>s+(r.gastoFood||0),0);
   const tSaldo=data.reduce((s,r)=>s+(r.saldo||0),0);
   const tEfectivoCaja=data.reduce((s,r)=>s+(r.efectivoCaja||0),0);
+  const tDiferencia=data.reduce((s,r)=>s+((r.ventaFudo||0)-(r.saldo||0)),0);
   el.innerHTML=`<div class="card-title">${data.length} REGISTROS</div><div class="table-wrap"><table>
-    <thead><tr><th>Fecha</th><th>Venta FUDO</th><th>Efectivo</th><th>Tarjeta</th><th>MP</th><th>Salida CC</th><th>Ingreso C/C</th><th>Gasto Bar</th><th>Pago</th><th>Det. Bar</th><th>Gasto Food</th><th>Pago</th><th>Det. Food</th><th>💰 Ef. Caja</th><th>Saldo</th><th></th></tr></thead>
-    <tbody>${data.map(r=>`<tr>
+    <thead><tr><th>Fecha</th><th>Venta FUDO</th><th>Efectivo</th><th>Tarjeta</th><th>MP</th><th>Salida CC</th><th>Ingreso C/C</th><th>Gasto Bar</th><th>Pago</th><th>Det. Bar</th><th>Gasto Food</th><th>Pago</th><th>Det. Food</th><th>💰 Ef. Caja</th><th>Saldo</th><th>Diferencia</th><th></th></tr></thead>
+    <tbody>${data.map(r=>{
+      const diferencia = (r.ventaFudo||0)-(r.saldo||0);
+      return `<tr>
       <td class="mono">${r.fecha}</td>
       <td class="mono pos">${fmt(r.ventaFudo||0)}</td>
       <td class="mono">${r.efectivo?fmt(r.efectivo):'—'}</td>
@@ -726,15 +734,89 @@ function renderDiarioTable(bar) {
       <td style="color:var(--text-muted)">${r.detalleFood||'—'}</td>
       <td class="mono ${cls(r.efectivoCaja||0)}" style="font-weight:600">${r.efectivoCaja!==undefined?fmtSign(r.efectivoCaja):'—'}</td>
       <td class="mono ${cls(r.saldo||0)}">${fmtSign(r.saldo||0)}</td>
-      <td><button class="btn btn-danger" onclick="deleteDiario('${bar}','${r.id}')">✕</button></td>
-    </tr>`).join('')}</tbody></table></div>
+      <td class="mono ${cls(-diferencia)}">${fmtSign(diferencia)}</td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="editDiario('${bar}','${r.id}')">✏️</button>
+        <button class="btn btn-danger" onclick="deleteDiario('${bar}','${r.id}')">✕</button>
+      </td>
+    </tr>`;}).join('')}</tbody></table></div>
     <div class="summary-row">
       <div class="summary-item"><span class="lbl">Total Venta:</span><span class="val pos">${fmt(tVenta)}</span></div>
       <div class="summary-item"><span class="lbl">Gastos Bar:</span><span class="val neg">${fmt(tGastoBar)}</span></div>
       <div class="summary-item"><span class="lbl">Gastos Food:</span><span class="val neg">${fmt(tGastoFood)}</span></div>
       <div class="summary-item"><span class="lbl">💰 Ef. en Caja:</span><span class="val ${cls(tEfectivoCaja)}">${fmtSign(tEfectivoCaja)}</span></div>
       <div class="summary-item"><span class="lbl">Saldo Total:</span><span class="val ${cls(tSaldo)}">${fmtSign(tSaldo)}</span></div>
+      <div class="summary-item"><span class="lbl">Diferencia Total:</span><span class="val ${cls(-tDiferencia)}">${fmtSign(tDiferencia)}</span></div>
     </div>`;
+}
+
+// ── EDIT DIARIO ────────────────────────────────────────────────
+function editDiario(bar, id) {
+  const r = state.diario[bar].find(x=>String(x.id)===String(id));
+  if(!r) return;
+  const p = bar==='bdf'?'dbdf':'dsb';
+  // Guardar id en edicion
+  g('form-diario-'+bar).dataset.editId = id;
+  // Precargar campos
+  g(p+'-fecha').value = r.fecha||'';
+  g(p+'-ventaFudo').value = r.ventaFudo||'';
+  g(p+'-efectivo').value = r.efectivo||'';
+  g(p+'-tarjeta').value = r.tarjeta||'';
+  g(p+'-mp').value = r.mp||'';
+  g(p+'-salidaCC').value = r.salidaCC||'';
+  g(p+'-ingresoCC').value = r.ingresoCC||'';
+  g(p+'-gastoBar').value = r.gastoBar||'';
+  if(g(p+'-pagoBar')) g(p+'-pagoBar').value = r.pagoBar||'Efectivo';
+  g(p+'-detalleBar').value = r.detalleBar||'';
+  g(p+'-gastoFood').value = r.gastoFood||'';
+  if(g(p+'-pagoFood')) g(p+'-pagoFood').value = r.pagoFood||'Efectivo';
+  g(p+'-detalleFood').value = r.detalleFood||'';
+  // Cambiar botón a "Actualizar"
+  const btn = g('btn-save-d'+bar);
+  btn.textContent = 'Actualizar';
+  btn.onclick = () => updateDiario(bar, id);
+  // Abrir form
+  document.getElementById('form-diario-'+bar).style.display='block';
+  previewDiario(bar);
+  document.getElementById('form-diario-'+bar).scrollIntoView({behavior:'smooth'});
+}
+
+async function updateDiario(bar, id) {
+  const p = bar==='bdf'?'dbdf':'dsb';
+  const fecha=g(p+'-fecha').value; if(!fecha){toast('Completá la fecha','error');return;}
+  const ef=num(p+'-efectivo'),tar=num(p+'-tarjeta'),mp=num(p+'-mp');
+  const sCC=num(p+'-salidaCC'),iCC=num(p+'-ingresoCC'),gBar=num(p+'-gastoBar'),gFood=num(p+'-gastoFood');
+  const pagoBar=g(p+'-pagoBar')?.value||'Efectivo';
+  const pagoFood=g(p+'-pagoFood')?.value||'Efectivo';
+  const gastoBarEfectivo = pagoBar==='Efectivo'?gBar:0;
+  const gastoFoodEfectivo = pagoFood==='Efectivo'?gFood:0;
+  const efectivoCaja = ef - gastoBarEfectivo - gastoFoodEfectivo;
+  const saldo=ef+tar+mp-sCC+iCC-gBar-gFood;
+  const ventaFudo=num(p+'-ventaFudo');
+  const data={id,fecha,ventaFudo,efectivo:ef,tarjeta:tar,mp,salidaCC:sCC,ingresoCC:iCC,
+    gastoBar:gBar,pagoBar,detalleBar:g(p+'-detalleBar').value,
+    gastoFood:gFood,pagoFood,detalleFood:g(p+'-detalleFood').value,
+    efectivoCaja,saldo};
+  setBtnLoading('btn-save-d'+bar,true); syncDot('loading','Guardando...');
+  try {
+    // Eliminar el viejo e insertar el nuevo
+    await jsonp({action:'deleteRow',sheet:'DIARIO_'+bar.toUpperCase(),id});
+    await jsonp({action:'insert',sheet:'DIARIO_'+bar.toUpperCase(),...data});
+    state.diario[bar] = state.diario[bar].filter(r=>String(r.id)!==String(id));
+    state.diario[bar].push(data);
+    closeForm('diario-'+bar);
+    ['ventaFudo','efectivo','tarjeta','mp','salidaCC','ingresoCC','gastoBar','detalleBar','gastoFood','detalleFood'].forEach(f=>{const el=g(p+'-'+f);if(el)el.value='';});
+    if(g(p+'-pagoBar')) g(p+'-pagoBar').value='Efectivo';
+    if(g(p+'-pagoFood')) g(p+'-pagoFood').value='Efectivo';
+    if(g(p+'-efectivo-caja')) g(p+'-efectivo-caja').textContent='$0';
+    g(p+'-preview').innerHTML='';
+    // Restaurar botón
+    const btn=g('btn-save-d'+bar);
+    btn.textContent='Guardar';
+    btn.onclick=()=>saveDiario(bar);
+    syncDot('ok','Actualizado ✓'); toast('Registro actualizado ✓'); render();
+  } catch(e){ syncDot('error','Error'); toast('Error al actualizar','error'); }
+  setBtnLoading('btn-save-d'+bar,false);
 }
 
 // ── RENDER PERSONAL ────────────────────────────────────────────
