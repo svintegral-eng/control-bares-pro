@@ -140,22 +140,14 @@
         <div class="form-group"><label>MP</label><input type="number" id="dbdf-mp" placeholder="0" oninput="previewDiario('bdf')"></div>
         <div class="form-group"><label>Salida CC</label><input type="number" id="dbdf-salidaCC" placeholder="0" oninput="previewDiario('bdf')"></div>
         <div class="form-group"><label>Ingreso C/C</label><input type="number" id="dbdf-ingresoCC" placeholder="0" oninput="previewDiario('bdf')"></div>
-        <div class="form-group"><label>Gasto Bar ($)</label><input type="number" id="dbdf-gastoBar" placeholder="0" oninput="previewDiario('bdf')"></div>
-        <div class="form-group"><label>Pago Gasto Bar</label>
-          <select id="dbdf-pagoBar" onchange="previewDiario('bdf')">
-            <option value="Efectivo">Efectivo</option>
-            <option value="Transferencia">Transferencia</option>
-          </select>
+      </div>
+      <!-- GASTOS DINÁMICOS -->
+      <div style="margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;">Gastos</div>
+          <button class="btn btn-ghost" style="padding:5px 12px;font-size:11px" onclick="addGastoRow('bdf')">+ Agregar Gasto</button>
         </div>
-        <div class="form-group"><label>Detalle Gasto Bar</label><input type="text" id="dbdf-detalleBar" placeholder="Descripción"></div>
-        <div class="form-group"><label>Gasto Food ($)</label><input type="number" id="dbdf-gastoFood" placeholder="0" oninput="previewDiario('bdf')"></div>
-        <div class="form-group"><label>Pago Gasto Food</label>
-          <select id="dbdf-pagoFood" onchange="previewDiario('bdf')">
-            <option value="Efectivo">Efectivo</option>
-            <option value="Transferencia">Transferencia</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Detalle Gasto Food</label><input type="text" id="dbdf-detalleFood" placeholder="Descripción"></div>
+        <div id="dbdf-gastos-rows"></div>
       </div>
       <!-- EFECTIVO EN CAJA -->
       <div id="dbdf-caja-box" style="margin-top:16px;padding:16px 20px;border-radius:10px;background:rgba(240,165,0,.08);border:2px solid var(--accent-bdf);display:flex;align-items:center;justify-content:space-between;">
@@ -190,22 +182,14 @@
         <div class="form-group"><label>MP</label><input type="number" id="dsb-mp" placeholder="0" oninput="previewDiario('sb')"></div>
         <div class="form-group"><label>Salida CC</label><input type="number" id="dsb-salidaCC" placeholder="0" oninput="previewDiario('sb')"></div>
         <div class="form-group"><label>Ingreso C/C</label><input type="number" id="dsb-ingresoCC" placeholder="0" oninput="previewDiario('sb')"></div>
-        <div class="form-group"><label>Gasto Bar ($)</label><input type="number" id="dsb-gastoBar" placeholder="0" oninput="previewDiario('sb')"></div>
-        <div class="form-group"><label>Pago Gasto Bar</label>
-          <select id="dsb-pagoBar" onchange="previewDiario('sb')">
-            <option value="Efectivo">Efectivo</option>
-            <option value="Transferencia">Transferencia</option>
-          </select>
+      </div>
+      <!-- GASTOS DINÁMICOS -->
+      <div style="margin-top:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;">Gastos</div>
+          <button class="btn btn-ghost" style="padding:5px 12px;font-size:11px" onclick="addGastoRow('sb')">+ Agregar Gasto</button>
         </div>
-        <div class="form-group"><label>Detalle Gasto Bar</label><input type="text" id="dsb-detalleBar" placeholder="Descripción"></div>
-        <div class="form-group"><label>Gasto Food ($)</label><input type="number" id="dsb-gastoFood" placeholder="0" oninput="previewDiario('sb')"></div>
-        <div class="form-group"><label>Pago Gasto Food</label>
-          <select id="dsb-pagoFood" onchange="previewDiario('sb')">
-            <option value="Efectivo">Efectivo</option>
-            <option value="Transferencia">Transferencia</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Detalle Gasto Food</label><input type="text" id="dsb-detalleFood" placeholder="Descripción"></div>
+        <div id="dsb-gastos-rows"></div>
       </div>
       <!-- EFECTIVO EN CAJA -->
       <div id="dsb-caja-box" style="margin-top:16px;padding:16px 20px;border-radius:10px;background:rgba(0,194,168,.08);border:2px solid var(--accent-sb);display:flex;align-items:center;justify-content:space-between;">
@@ -570,10 +554,15 @@ async function loadAll() {
 }
 
 function toNum(obj) {
-  const fields = ['ventaFudo','efectivo','tarjeta','mp','salidaCC','ingresoCC','gastoBar','gastoFood','saldo','monto','ventaFood','gastoMateria','gastoPersonal','otrosGastos','resultado','rentabilidad'];
+  const fields = ['ventaFudo','efectivo','tarjeta','mp','salidaCC','ingresoCC','gastoBar','gastoFood','saldo','monto','ventaFood','gastoMateria','gastoPersonal','otrosGastos','resultado','rentabilidad','efectivoCaja'];
   const o = {...obj};
   fields.forEach(f => { if(o[f]!==undefined && o[f]!=='') o[f] = parseFloat(o[f])||0; });
   if(o.fecha && String(o.fecha).includes('T')) o.fecha = String(o.fecha).slice(0,10);
+  // Parse gastos JSON
+  if(o.gastos && typeof o.gastos === 'string') {
+    try { o.gastos = JSON.parse(o.gastos); } catch(e){ o.gastos = []; }
+  }
+  if(!Array.isArray(o.gastos)) o.gastos = [];
   return o;
 }
 
@@ -613,23 +602,83 @@ function sortByDate(arr){return [...arr].sort((a,b)=>new Date(b.fecha||b.mes+'-0
 function setBtnLoading(id,l){const b=g(id);if(!b)return;b.disabled=l;b.textContent=l?'Guardando...':'Guardar';}
 
 // ── PREVIEW ────────────────────────────────────────────────────
+// ── GASTOS DINÁMICOS ───────────────────────────────────────────
+let gastoRowCount = {bdf: 0, sb: 0};
+
+function addGastoRow(bar, gasto) {
+  const p = bar==='bdf'?'dbdf':'dsb';
+  const container = g(p+'-gastos-rows');
+  const rowId = ++gastoRowCount[bar];
+  const div = document.createElement('div');
+  div.id = p+'-gasto-'+rowId;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 120px 140px 36px;gap:8px;margin-bottom:8px;align-items:center;';
+  div.innerHTML = `
+    <input type="text" placeholder="Detalle del gasto" value="${gasto?.detalle||''}" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;" oninput="previewDiario('${bar}')">
+    <select onchange="previewDiario('${bar}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+      <option value="Bar" ${gasto?.tipo==='Bar'?'selected':''}>Bar</option>
+      <option value="Food" ${gasto?.tipo==='Food'?'selected':''}>Food</option>
+    </select>
+    <select onchange="previewDiario('${bar}')" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;">
+      <option value="Efectivo" ${gasto?.pago!=='Transferencia'?'selected':''}>Efectivo</option>
+      <option value="Transferencia" ${gasto?.pago==='Transferencia'?'selected':''}>Transferencia</option>
+    </select>
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      <input type="number" placeholder="$0" value="${gasto?.monto||''}" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'DM Mono',sans-serif;font-size:13px;outline:none;width:100px;" oninput="previewDiario('${bar}')">
+    </div>
+    <button onclick="removeGastoRow('${bar}',${rowId})" style="background:var(--red);color:#fff;border:none;border-radius:6px;padding:6px 10px;cursor:pointer;font-size:13px;">✕</button>
+  `;
+  // Fix grid to 5 cols
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 100px 130px 100px 36px;gap:8px;margin-bottom:8px;align-items:center;';
+  container.appendChild(div);
+  previewDiario(bar);
+}
+
+function removeGastoRow(bar, rowId) {
+  const p = bar==='bdf'?'dbdf':'dsb';
+  const el = g(p+'-gasto-'+rowId);
+  if(el) el.remove();
+  previewDiario(bar);
+}
+
+function getGastos(bar) {
+  const p = bar==='bdf'?'dbdf':'dsb';
+  const container = g(p+'-gastos-rows');
+  if(!container) return [];
+  const rows = container.querySelectorAll('[id^="'+p+'-gasto-"]');
+  return Array.from(rows).map(row => {
+    const inputs = row.querySelectorAll('input');
+    const selects = row.querySelectorAll('select');
+    return {
+      detalle: inputs[0]?.value || '',
+      tipo: selects[0]?.value || 'Bar',
+      pago: selects[1]?.value || 'Efectivo',
+      monto: parseFloat((inputs[1]?.value||'0').replace(/\./g,'')) || 0
+    };
+  }).filter(g => g.monto > 0 || g.detalle);
+}
+
+function clearGastos(bar) {
+  const p = bar==='bdf'?'dbdf':'dsb';
+  const container = g(p+'-gastos-rows');
+  if(container) container.innerHTML = '';
+  gastoRowCount[bar] = 0;
+}
+
 function previewDiario(bar) {
   const p = bar==='bdf'?'dbdf':'dsb';
   const ef=num(p+'-efectivo'),tar=num(p+'-tarjeta'),mp=num(p+'-mp');
-  const sCC=num(p+'-salidaCC'),iCC=num(p+'-ingresoCC'),gBar=num(p+'-gastoBar'),gFood=num(p+'-gastoFood');
-  const pagoBar = g(p+'-pagoBar')?.value || 'Efectivo';
-  const pagoFood = g(p+'-pagoFood')?.value || 'Efectivo';
-  const saldo = ef+tar+mp-sCC+iCC-gBar-gFood;
-  const el=g(p+'-preview'); if(el) el.innerHTML=`Saldo estimado: <span class="${cls(saldo)}">${fmtSign(saldo)}</span>`;
-
+  const sCC=num(p+'-salidaCC'),iCC=num(p+'-ingresoCC');
+  const gastos = getGastos(bar);
+  const totalGastos = gastos.reduce((s,g)=>s+g.monto, 0);
+  const gastoEfectivo = gastos.filter(g=>g.pago==='Efectivo').reduce((s,g)=>s+g.monto, 0);
+  const saldo = ef+tar+mp-sCC+iCC-totalGastos;
+  const el=g(p+'-preview');
+  if(el) el.innerHTML=`Saldo estimado: <span class="${cls(saldo)}">${fmtSign(saldo)}</span>`;
   // Efectivo en caja
-  const gastoBarEfectivo = pagoBar === 'Efectivo' ? gBar : 0;
-  const gastoFoodEfectivo = pagoFood === 'Efectivo' ? gFood : 0;
-  const efectivoCaja = ef - gastoBarEfectivo - gastoFoodEfectivo;
+  const efectivoCaja = ef - gastoEfectivo;
   const elCaja = g(p+'-efectivo-caja');
   if(elCaja) {
     elCaja.textContent = fmtSign(efectivoCaja);
-    elCaja.className = '';
     elCaja.style.color = efectivoCaja >= 0 ? (bar==='bdf'?'var(--accent-bdf)':'var(--accent-sb)') : 'var(--red)';
   }
 }
@@ -665,7 +714,7 @@ function previewFood(bar) {
 function calcGastoFoodDiario(bar, mesKey) {
   return state.diario[bar]
     .filter(r => r.fecha && String(r.fecha).slice(0,7) === mesKey)
-    .reduce((s,r) => s+(r.gastoFood||0), 0);
+    .reduce((s,r) => s+(r.gastos||[]).filter(g=>g.tipo==='Food').reduce((a,g)=>a+g.monto,0), 0);
 }
 function calcPersonalCocina(bar, mesKey) {
   return state.personal[bar]
@@ -678,37 +727,31 @@ async function saveDiario(bar) {
   const p = bar==='bdf'?'dbdf':'dsb';
   const fecha=g(p+'-fecha').value; if(!fecha){toast('Completá la fecha','error');return;}
   const ef=num(p+'-efectivo'),tar=num(p+'-tarjeta'),mp=num(p+'-mp');
-  const sCC=num(p+'-salidaCC'),iCC=num(p+'-ingresoCC'),gBar=num(p+'-gastoBar'),gFood=num(p+'-gastoFood');
-  const pagoBar=g(p+'-pagoBar')?.value||'Efectivo';
-  const pagoFood=g(p+'-pagoFood')?.value||'Efectivo';
-  const gastoBarEfectivo = pagoBar==='Efectivo'?gBar:0;
-  const gastoFoodEfectivo = pagoFood==='Efectivo'?gFood:0;
-  const efectivoCaja = ef - gastoBarEfectivo - gastoFoodEfectivo;
-  const saldo=ef+tar+mp-sCC+iCC-gBar-gFood;
-  const ventaFudo=num(p+'-ventaFudo');
-  const id=Date.now();
-  const data={id,fecha,ventaFudo,efectivo:ef,tarjeta:tar,mp,salidaCC:sCC,ingresoCC:iCC,
-    gastoBar:gBar,pagoBar,detalleBar:g(p+'-detalleBar').value,
-    gastoFood:gFood,pagoFood,detalleFood:g(p+'-detalleFood').value,
-    efectivoCaja,saldo};
-  const params = {action:'insert',sheet:'DIARIO_'+bar.toUpperCase(),...data};
+  const sCC=num(p+'-salidaCC'),iCC=num(p+'-ingresoCC');
+  const gastos = getGastos(bar);
+  const totalGastos = gastos.reduce((s,g)=>s+g.monto, 0);
+  const gastoEfectivo = gastos.filter(g=>g.pago==='Efectivo').reduce((s,g)=>s+g.monto, 0);
+  const efectivoCaja = ef - gastoEfectivo;
+  const saldo = ef+tar+mp-sCC+iCC-totalGastos;
+  const ventaFudo = num(p+'-ventaFudo');
+  const id = Date.now();
+  const data = {id, fecha, ventaFudo, efectivo:ef, tarjeta:tar, mp, salidaCC:sCC, ingresoCC:iCC,
+    gastos: JSON.stringify(gastos), efectivoCaja, saldo};
+  const params = {action:'insert', sheet:'DIARIO_'+bar.toUpperCase(), ...data};
   setBtnLoading('btn-save-d'+bar,true); syncDot('loading','Guardando...');
   try {
     await jsonp(params);
     syncDot('ok','Guardado ✓'); toast('Guardado ✓');
   } catch(e){
-    // Sin conexión — guardar en cola
     addToQueue(params);
-    toast('Sin conexión — guardado localmente, se sincronizará después', 'error');
+    toast('Sin conexión — guardado localmente', 'error');
     syncDot('error', loadQueue().length+' pendiente/s');
   }
-  state.diario[bar].push(data);
-  // Actualizar caché local
+  state.diario[bar].push({...data, gastos});
   localStorage.setItem('cbpro_cache', JSON.stringify(state));
   closeForm('diario-'+bar);
-  ['ventaFudo','efectivo','tarjeta','mp','salidaCC','ingresoCC','gastoBar','detalleBar','gastoFood','detalleFood'].forEach(f=>{const el=g(p+'-'+f);if(el)el.value='';});
-  if(g(p+'-pagoBar')) g(p+'-pagoBar').value='Efectivo';
-  if(g(p+'-pagoFood')) g(p+'-pagoFood').value='Efectivo';
+  ['ventaFudo','efectivo','tarjeta','mp','salidaCC','ingresoCC'].forEach(f=>{const el=g(p+'-'+f);if(el)el.value='';});
+  clearGastos(bar);
   if(g(p+'-efectivo-caja')) g(p+'-efectivo-caja').textContent='$0';
   g(p+'-preview').innerHTML='';
   setBtnLoading('btn-save-d'+bar,false);
@@ -797,45 +840,48 @@ function renderDiarioTable(bar) {
   const el=g('table-diario-'+bar); const data=sortByDate(state.diario[bar]);
   if(!data.length){el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div>No hay registros todavía</div></div>';return;}
   const tVenta=data.reduce((s,r)=>s+(r.ventaFudo||0),0);
-  const tGastoBar=data.reduce((s,r)=>s+(r.gastoBar||0),0);
-  const tGastoFood=data.reduce((s,r)=>s+(r.gastoFood||0),0);
+  const tGastos=data.reduce((s,r)=>s+(r.gastos||[]).reduce((a,g)=>a+g.monto,0),0);
   const tSaldo=data.reduce((s,r)=>s+(r.saldo||0),0);
   const tEfectivoCaja=data.reduce((s,r)=>s+(r.efectivoCaja||0),0);
   const tDiferencia=data.reduce((s,r)=>{
-    const justificado=(r.efectivo||0)+(r.tarjeta||0)+(r.mp||0)-(r.salidaCC||0)+(r.ingresoCC||0)+(r.gastoBar||0)+(r.gastoFood||0);
+    const justificado=(r.efectivo||0)+(r.tarjeta||0)+(r.mp||0)+(r.salidaCC||0)+(r.gastos||[]).reduce((a,g)=>a+g.monto,0);
     return s+((r.ventaFudo||0)-justificado);
   },0);
+
   el.innerHTML=`<div class="card-title">${data.length} REGISTROS</div><div class="table-wrap"><table>
-    <thead><tr><th>Fecha</th><th>Venta FUDO</th><th>Efectivo</th><th>Tarjeta</th><th>MP</th><th>Salida CC</th><th>Ingreso C/C</th><th>Gasto Bar</th><th>Pago</th><th>Det. Bar</th><th>Gasto Food</th><th>Pago</th><th>Det. Food</th><th>💰 Ef. Caja</th><th>Saldo</th><th>Diferencia</th><th></th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Venta FUDO</th><th>Efectivo</th><th>Tarjeta</th><th>MP</th><th>Salida CC</th><th>Ingreso C/C</th><th>Gastos</th><th>💰 Ef. Caja</th><th>Saldo</th><th>Diferencia</th><th></th></tr></thead>
     <tbody>${data.map(r=>{
-      const justificado=(r.efectivo||0)+(r.tarjeta||0)+(r.mp||0)-(r.salidaCC||0)+(r.ingresoCC||0)+(r.gastoBar||0)+(r.gastoFood||0);
+      const gastos = r.gastos||[];
+      const totalGastos = gastos.reduce((s,g)=>s+g.monto,0);
+      const justificado=(r.efectivo||0)+(r.tarjeta||0)+(r.mp||0)+(r.salidaCC||0)+totalGastos;
       const diferencia=(r.ventaFudo||0)-justificado;
+      const gastosHtml = gastos.length ? gastos.map(g=>
+        `<div style="font-size:11px;display:flex;gap:6px;align-items:center;margin-bottom:2px;">
+          <span class="badge" style="background:rgba(232,67,147,.15);color:var(--accent-gas)">${g.tipo}</span>
+          <span class="badge" style="${g.pago==='Transferencia'?'background:rgba(0,194,168,.15);color:var(--accent-sb)':'background:rgba(240,165,0,.15);color:var(--accent-bdf)'}">${g.pago}</span>
+          <span style="color:var(--text-muted)">${g.detalle||''}</span>
+          <span class="mono neg">${fmt(g.monto)}</span>
+        </div>`).join('') : '—';
       return `<tr>
-      <td class="mono">${r.fecha}</td>
-      <td class="mono pos">${fmt(r.ventaFudo||0)}</td>
-      <td class="mono">${r.efectivo?fmt(r.efectivo):'—'}</td>
-      <td class="mono">${r.tarjeta?fmt(r.tarjeta):'—'}</td>
-      <td class="mono">${r.mp?fmt(r.mp):'—'}</td>
-      <td class="mono neg">${r.salidaCC?fmt(r.salidaCC):'—'}</td>
-      <td class="mono pos">${r.ingresoCC?fmt(r.ingresoCC):'—'}</td>
-      <td class="mono neg">${r.gastoBar?fmt(r.gastoBar):'—'}</td>
-      <td><span class="badge" style="${r.pagoBar==='Transferencia'?'background:rgba(0,194,168,.15);color:var(--accent-sb)':'background:rgba(240,165,0,.15);color:var(--accent-bdf)'}">${r.pagoBar||'Ef.'}</span></td>
-      <td style="color:var(--text-muted)">${r.detalleBar||'—'}</td>
-      <td class="mono neg">${r.gastoFood?fmt(r.gastoFood):'—'}</td>
-      <td><span class="badge" style="${r.pagoFood==='Transferencia'?'background:rgba(0,194,168,.15);color:var(--accent-sb)':'background:rgba(240,165,0,.15);color:var(--accent-bdf)'}">${r.pagoFood||'Ef.'}</span></td>
-      <td style="color:var(--text-muted)">${r.detalleFood||'—'}</td>
-      <td class="mono ${cls(r.efectivoCaja||0)}" style="font-weight:600">${r.efectivoCaja!==undefined?fmtSign(r.efectivoCaja):'—'}</td>
-      <td class="mono ${cls(r.saldo||0)}">${fmtSign(r.saldo||0)}</td>
-      <td class="mono ${diferencia===0?'neutral':diferencia>0?'neg':'pos'}" style="font-weight:600">${diferencia===0?'0':fmtSign(diferencia)}</td>
-      <td style="display:flex;gap:4px">
-        <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="editDiario('${bar}','${r.id}')">✏️</button>
-        <button class="btn btn-danger" onclick="deleteDiario('${bar}','${r.id}')">✕</button>
-      </td>
-    </tr>`;}).join('')}</tbody></table></div>
+        <td class="mono">${r.fecha}</td>
+        <td class="mono pos">${fmt(r.ventaFudo||0)}</td>
+        <td class="mono">${r.efectivo?fmt(r.efectivo):'—'}</td>
+        <td class="mono">${r.tarjeta?fmt(r.tarjeta):'—'}</td>
+        <td class="mono">${r.mp?fmt(r.mp):'—'}</td>
+        <td class="mono neg">${r.salidaCC?fmt(r.salidaCC):'—'}</td>
+        <td class="mono pos">${r.ingresoCC?fmt(r.ingresoCC):'—'}</td>
+        <td style="min-width:200px">${gastosHtml}</td>
+        <td class="mono ${cls(r.efectivoCaja||0)}" style="font-weight:600">${r.efectivoCaja!==undefined?fmtSign(r.efectivoCaja):'—'}</td>
+        <td class="mono ${cls(r.saldo||0)}">${fmtSign(r.saldo||0)}</td>
+        <td class="mono ${diferencia===0?'neutral':diferencia>0?'neg':'pos'}" style="font-weight:600">${diferencia===0?'0':fmtSign(diferencia)}</td>
+        <td style="display:flex;gap:4px">
+          <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="editDiario('${bar}','${r.id}')">✏️</button>
+          <button class="btn btn-danger" onclick="deleteDiario('${bar}','${r.id}')">✕</button>
+        </td>
+      </tr>`;}).join('')}</tbody></table></div>
     <div class="summary-row">
       <div class="summary-item"><span class="lbl">Total Venta:</span><span class="val pos">${fmt(tVenta)}</span></div>
-      <div class="summary-item"><span class="lbl">Gastos Bar:</span><span class="val neg">${fmt(tGastoBar)}</span></div>
-      <div class="summary-item"><span class="lbl">Gastos Food:</span><span class="val neg">${fmt(tGastoFood)}</span></div>
+      <div class="summary-item"><span class="lbl">Total Gastos:</span><span class="val neg">${fmt(tGastos)}</span></div>
       <div class="summary-item"><span class="lbl">💰 Ef. en Caja:</span><span class="val ${cls(tEfectivoCaja)}">${fmtSign(tEfectivoCaja)}</span></div>
       <div class="summary-item"><span class="lbl">Saldo Total:</span><span class="val ${cls(tSaldo)}">${fmtSign(tSaldo)}</span></div>
       <div class="summary-item"><span class="lbl">Diferencia Total:</span><span class="val ${tDiferencia===0?'neutral':tDiferencia>0?'neg':'pos'}">${tDiferencia===0?'0':fmtSign(tDiferencia)}</span></div>
@@ -847,9 +893,6 @@ function editDiario(bar, id) {
   const r = state.diario[bar].find(x=>String(x.id)===String(id));
   if(!r) return;
   const p = bar==='bdf'?'dbdf':'dsb';
-  // Guardar id en edicion
-  g('form-diario-'+bar).dataset.editId = id;
-  // Precargar campos
   g(p+'-fecha').value = r.fecha||'';
   g(p+'-ventaFudo').value = r.ventaFudo||'';
   g(p+'-efectivo').value = r.efectivo||'';
@@ -857,17 +900,12 @@ function editDiario(bar, id) {
   g(p+'-mp').value = r.mp||'';
   g(p+'-salidaCC').value = r.salidaCC||'';
   g(p+'-ingresoCC').value = r.ingresoCC||'';
-  g(p+'-gastoBar').value = r.gastoBar||'';
-  if(g(p+'-pagoBar')) g(p+'-pagoBar').value = r.pagoBar||'Efectivo';
-  g(p+'-detalleBar').value = r.detalleBar||'';
-  g(p+'-gastoFood').value = r.gastoFood||'';
-  if(g(p+'-pagoFood')) g(p+'-pagoFood').value = r.pagoFood||'Efectivo';
-  g(p+'-detalleFood').value = r.detalleFood||'';
-  // Cambiar botón a "Actualizar"
+  // Cargar gastos
+  clearGastos(bar);
+  (r.gastos||[]).forEach(gasto => addGastoRow(bar, gasto));
   const btn = g('btn-save-d'+bar);
   btn.textContent = 'Actualizar';
   btn.onclick = () => updateDiario(bar, id);
-  // Abrir form
   document.getElementById('form-diario-'+bar).style.display='block';
   previewDiario(bar);
   document.getElementById('form-diario-'+bar).scrollIntoView({behavior:'smooth'});
@@ -877,35 +915,28 @@ async function updateDiario(bar, id) {
   const p = bar==='bdf'?'dbdf':'dsb';
   const fecha=g(p+'-fecha').value; if(!fecha){toast('Completá la fecha','error');return;}
   const ef=num(p+'-efectivo'),tar=num(p+'-tarjeta'),mp=num(p+'-mp');
-  const sCC=num(p+'-salidaCC'),iCC=num(p+'-ingresoCC'),gBar=num(p+'-gastoBar'),gFood=num(p+'-gastoFood');
-  const pagoBar=g(p+'-pagoBar')?.value||'Efectivo';
-  const pagoFood=g(p+'-pagoFood')?.value||'Efectivo';
-  const gastoBarEfectivo = pagoBar==='Efectivo'?gBar:0;
-  const gastoFoodEfectivo = pagoFood==='Efectivo'?gFood:0;
-  const efectivoCaja = ef - gastoBarEfectivo - gastoFoodEfectivo;
-  const saldo=ef+tar+mp-sCC+iCC-gBar-gFood;
-  const ventaFudo=num(p+'-ventaFudo');
-  const data={id,fecha,ventaFudo,efectivo:ef,tarjeta:tar,mp,salidaCC:sCC,ingresoCC:iCC,
-    gastoBar:gBar,pagoBar,detalleBar:g(p+'-detalleBar').value,
-    gastoFood:gFood,pagoFood,detalleFood:g(p+'-detalleFood').value,
-    efectivoCaja,saldo};
+  const sCC=num(p+'-salidaCC'),iCC=num(p+'-ingresoCC');
+  const gastos = getGastos(bar);
+  const totalGastos = gastos.reduce((s,g)=>s+g.monto, 0);
+  const gastoEfectivo = gastos.filter(g=>g.pago==='Efectivo').reduce((s,g)=>s+g.monto, 0);
+  const efectivoCaja = ef - gastoEfectivo;
+  const saldo = ef+tar+mp-sCC+iCC-totalGastos;
+  const ventaFudo = num(p+'-ventaFudo');
+  const data = {id, fecha, ventaFudo, efectivo:ef, tarjeta:tar, mp, salidaCC:sCC, ingresoCC:iCC,
+    gastos: JSON.stringify(gastos), efectivoCaja, saldo};
   setBtnLoading('btn-save-d'+bar,true); syncDot('loading','Guardando...');
   try {
-    // Eliminar el viejo e insertar el nuevo
     await jsonp({action:'deleteRow',sheet:'DIARIO_'+bar.toUpperCase(),id});
     await jsonp({action:'insert',sheet:'DIARIO_'+bar.toUpperCase(),...data});
     state.diario[bar] = state.diario[bar].filter(r=>String(r.id)!==String(id));
-    state.diario[bar].push(data);
+    state.diario[bar].push({...data, gastos});
+    localStorage.setItem('cbpro_cache', JSON.stringify(state));
     closeForm('diario-'+bar);
-    ['ventaFudo','efectivo','tarjeta','mp','salidaCC','ingresoCC','gastoBar','detalleBar','gastoFood','detalleFood'].forEach(f=>{const el=g(p+'-'+f);if(el)el.value='';});
-    if(g(p+'-pagoBar')) g(p+'-pagoBar').value='Efectivo';
-    if(g(p+'-pagoFood')) g(p+'-pagoFood').value='Efectivo';
+    ['ventaFudo','efectivo','tarjeta','mp','salidaCC','ingresoCC'].forEach(f=>{const el=g(p+'-'+f);if(el)el.value='';});
+    clearGastos(bar);
     if(g(p+'-efectivo-caja')) g(p+'-efectivo-caja').textContent='$0';
     g(p+'-preview').innerHTML='';
-    // Restaurar botón
-    const btn=g('btn-save-d'+bar);
-    btn.textContent='Guardar';
-    btn.onclick=()=>saveDiario(bar);
+    const btn=g('btn-save-d'+bar); btn.textContent='Guardar'; btn.onclick=()=>saveDiario(bar);
     syncDot('ok','Actualizado ✓'); toast('Registro actualizado ✓'); render();
   } catch(e){ syncDot('error','Error'); toast('Error al actualizar','error'); }
   setBtnLoading('btn-save-d'+bar,false);
@@ -1085,10 +1116,10 @@ function getMonthlyStats(bar) {
   state.diario[bar].forEach(r => {
     if(!r.fecha) return;
     const m = String(r.fecha).slice(0,7);
-    if(!byMonth[m]) byMonth[m] = {venta:0, gastoBar:0, gastoFood:0, saldo:0, dias:0};
+    const totalGastos = (r.gastos||[]).reduce((a,g)=>a+g.monto,0);
+    if(!byMonth[m]) byMonth[m] = {venta:0, gastos:0, saldo:0, dias:0};
     byMonth[m].venta += r.ventaFudo||0;
-    byMonth[m].gastoBar += r.gastoBar||0;
-    byMonth[m].gastoFood += r.gastoFood||0;
+    byMonth[m].gastos += totalGastos;
     byMonth[m].saldo += r.saldo||0;
     byMonth[m].dias++;
   });
