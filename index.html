@@ -104,6 +104,7 @@
     <button class="nav-tab" onclick="showPage('personal-sb')">Personal SB</button>
     <button class="nav-tab" onclick="showPage('food-bdf')">Food BDF</button>
     <button class="nav-tab" onclick="showPage('food-sb')">Food SB</button>
+    <button class="nav-tab" onclick="showPage('estadisticas')">Estadísticas</button>
   </div>
   <div class="sync-status">
     <div class="sync-dot loading" id="sync-dot"></div>
@@ -120,17 +121,6 @@
       <button class="btn btn-ghost" onclick="loadAll()">↻ Actualizar</button>
     </div>
     <div id="dash-content"></div>
-    <div class="card mt-20">
-      <div class="card-title">Estadísticas Mes a Mes</div>
-      <div class="chart-tabs">
-        <button class="chart-tab active" onclick="setDashChart('ventas',this)">Ventas</button>
-        <button class="chart-tab" onclick="setDashChart('resultado',this)">Resultado</button>
-        <button class="chart-tab" onclick="setDashChart('rentabilidad',this)">Rentabilidad %</button>
-        <button class="chart-tab" onclick="setDashChart('variacion',this)">Variación vs Mes Ant.</button>
-        <button class="chart-tab" onclick="setDashChart('variacionAnio',this)">Variación vs Año Ant.</button>
-      </div>
-      <div class="chart-container"><canvas id="chart-dash"></canvas></div>
-    </div>
   </div>
 
   <!-- DIARIO BDF -->
@@ -138,17 +128,6 @@
     <div class="section-head">
       <div class="section-title" style="color:var(--accent-bdf)">Diario — BDF</div>
       <button class="btn btn-bdf" onclick="openForm('diario-bdf')">+ Nuevo Día</button>
-    </div>
-    <div class="card mt-20">
-      <div class="card-title">Estadísticas BDF — Mes a Mes</div>
-      <div class="chart-tabs">
-        <button class="chart-tab active" onclick="setBarChart('bdf','ventas',this)">Ventas</button>
-        <button class="chart-tab" onclick="setBarChart('bdf','resultado',this)">Resultado</button>
-        <button class="chart-tab" onclick="setBarChart('bdf','rentabilidad',this)">Rentabilidad %</button>
-        <button class="chart-tab" onclick="setBarChart('bdf','variacion',this)">Variación vs Mes Ant.</button>
-        <button class="chart-tab" onclick="setBarChart('bdf','variacionAnio',this)">Variación vs Año Ant.</button>
-      </div>
-      <div class="chart-container"><canvas id="chart-bdf"></canvas></div>
     </div>
     <div id="form-diario-bdf" style="display:none" class="card">
       <div class="card-title">Registrar Día</div>
@@ -179,17 +158,6 @@
     <div class="section-head">
       <div class="section-title" style="color:var(--accent-sb)">Diario — SB</div>
       <button class="btn btn-sb" onclick="openForm('diario-sb')">+ Nuevo Día</button>
-    </div>
-    <div class="card mt-20">
-      <div class="card-title">Estadísticas SB — Mes a Mes</div>
-      <div class="chart-tabs">
-        <button class="chart-tab active" onclick="setBarChart('sb','ventas',this)">Ventas</button>
-        <button class="chart-tab" onclick="setBarChart('sb','resultado',this)">Resultado</button>
-        <button class="chart-tab" onclick="setBarChart('sb','rentabilidad',this)">Rentabilidad %</button>
-        <button class="chart-tab" onclick="setBarChart('sb','variacion',this)">Variación vs Mes Ant.</button>
-        <button class="chart-tab" onclick="setBarChart('sb','variacionAnio',this)">Variación vs Año Ant.</button>
-      </div>
-      <div class="chart-container"><canvas id="chart-sb"></canvas></div>
     </div>
     <div id="form-diario-sb" style="display:none" class="card">
       <div class="card-title">Registrar Día</div>
@@ -339,6 +307,48 @@
     <div id="table-food-sb" class="card mt-20"></div>
   </div>
 
+  <!-- ESTADÍSTICAS -->
+  <div id="page-estadisticas" class="page">
+    <div class="section-head">
+      <div class="section-title">Estadísticas</div>
+    </div>
+    <div class="card">
+      <div class="card-title">BDF vs SB — Comparativo</div>
+      <div class="chart-tabs">
+        <button class="chart-tab active" onclick="setDashChart('ventas',this)">Ventas</button>
+        <button class="chart-tab" onclick="setDashChart('resultado',this)">Resultado</button>
+        <button class="chart-tab" onclick="setDashChart('rentabilidad',this)">Rentabilidad %</button>
+        <button class="chart-tab" onclick="setDashChart('variacion',this)">Variación vs Mes Ant.</button>
+        <button class="chart-tab" onclick="setDashChart('variacionAnio',this)">Variación vs Año Ant.</button>
+      </div>
+      <div class="chart-container"><canvas id="chart-dash"></canvas></div>
+    </div>
+    <div class="dash-grid mt-20">
+      <div class="card">
+        <div class="card-title" style="color:var(--accent-bdf)">BDF — Detalle</div>
+        <div class="chart-tabs">
+          <button class="chart-tab active" onclick="setBarChart('bdf','ventas',this)">Ventas</button>
+          <button class="chart-tab" onclick="setBarChart('bdf','resultado',this)">Resultado</button>
+          <button class="chart-tab" onclick="setBarChart('bdf','rentabilidad',this)">Rentabilidad %</button>
+          <button class="chart-tab" onclick="setBarChart('bdf','variacion',this)">vs Mes Ant.</button>
+          <button class="chart-tab" onclick="setBarChart('bdf','variacionAnio',this)">vs Año Ant.</button>
+        </div>
+        <div class="chart-container"><canvas id="chart-bdf"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="color:var(--accent-sb)">SB — Detalle</div>
+        <div class="chart-tabs">
+          <button class="chart-tab active" onclick="setBarChart('sb','ventas',this)">Ventas</button>
+          <button class="chart-tab" onclick="setBarChart('sb','resultado',this)">Resultado</button>
+          <button class="chart-tab" onclick="setBarChart('sb','rentabilidad',this)">Rentabilidad %</button>
+          <button class="chart-tab" onclick="setBarChart('sb','variacion',this)">vs Mes Ant.</button>
+          <button class="chart-tab" onclick="setBarChart('sb','variacionAnio',this)">vs Año Ant.</button>
+        </div>
+        <div class="chart-container"><canvas id="chart-sb"></canvas></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -416,13 +426,14 @@ function toNum(obj) {
 }
 
 // ── NAVIGATION ─────────────────────────────────────────────────
-const PAGES = ['dashboard','diario-bdf','diario-sb','personal-bdf','personal-sb','food-bdf','food-sb'];
+const PAGES = ['dashboard','diario-bdf','diario-sb','personal-bdf','personal-sb','food-bdf','food-sb','estadisticas'];
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   document.querySelectorAll('.nav-tab')[PAGES.indexOf(id)].classList.add('active');
   render();
+  if(id==='estadisticas') setTimeout(renderCharts, 100);
 }
 function openForm(id) {
   document.getElementById('form-'+id).style.display='block';
@@ -780,7 +791,9 @@ function render() {
   renderDiarioTable('bdf'); renderDiarioTable('sb');
   renderPersonalTable('bdf'); renderPersonalTable('sb');
   renderFoodTable('bdf'); renderFoodTable('sb');
-  setTimeout(renderCharts, 50);
+  if(document.getElementById('page-estadisticas').classList.contains('active')) {
+    setTimeout(renderCharts, 50);
+  }
 }
 
 // ── CHART LOGIC ────────────────────────────────────────────────
