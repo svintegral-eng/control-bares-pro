@@ -669,12 +669,10 @@ function previewDiario(bar) {
   const ef=num(p+'-efectivo'),tar=num(p+'-tarjeta'),mp=num(p+'-mp');
   const sCC=num(p+'-salidaCC'),iCC=num(p+'-ingresoCC');
   const gastos = getGastos(bar);
-  const totalGastos = gastos.reduce((s,g)=>s+g.monto, 0);
   const gastoEfectivo = gastos.filter(g=>g.pago==='Efectivo').reduce((s,g)=>s+g.monto, 0);
-  const saldo = ef+tar+mp-sCC+iCC-totalGastos;
+  const saldo = ef+tar+mp-sCC+iCC-gastoEfectivo;
   const el=g(p+'-preview');
   if(el) el.innerHTML=`Saldo estimado: <span class="${cls(saldo)}">${fmtSign(saldo)}</span>`;
-  // Efectivo en caja
   const efectivoCaja = ef - gastoEfectivo;
   const elCaja = g(p+'-efectivo-caja');
   if(elCaja) {
@@ -732,7 +730,7 @@ async function saveDiario(bar) {
   const totalGastos = gastos.reduce((s,g)=>s+g.monto, 0);
   const gastoEfectivo = gastos.filter(g=>g.pago==='Efectivo').reduce((s,g)=>s+g.monto, 0);
   const efectivoCaja = ef - gastoEfectivo;
-  const saldo = ef+tar+mp-sCC+iCC-totalGastos;
+  const saldo = ef+tar+mp-sCC+iCC-gastoEfectivo;
   const ventaFudo = num(p+'-ventaFudo');
   const id = Date.now();
   const data = {id, fecha, ventaFudo, efectivo:ef, tarjeta:tar, mp, salidaCC:sCC, ingresoCC:iCC,
@@ -840,21 +838,45 @@ function renderDiarioTable(bar) {
   const el=g('table-diario-'+bar); const data=sortByDate(state.diario[bar]);
   if(!data.length){el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><div>No hay registros todavía</div></div>';return;}
   const tVenta=data.reduce((s,r)=>s+(r.ventaFudo||0),0);
-  const tGastos=data.reduce((s,r)=>s+(r.gastos||[]).reduce((a,g)=>a+g.monto,0),0);
+  const tEfectivo=data.reduce((s,r)=>s+(r.efectivo||0),0);
+  const tTarjeta=data.reduce((s,r)=>s+(r.tarjeta||0),0);
+  const tMp=data.reduce((s,r)=>s+(r.mp||0),0);
+  const tSalidaCC=data.reduce((s,r)=>s+(r.salidaCC||0),0);
+  const tIngresoCC=data.reduce((s,r)=>s+(r.ingresoCC||0),0);
+  const tGastosEf=data.reduce((s,r)=>s+(r.gastos||[]).filter(g=>g.pago==='Efectivo').reduce((a,g)=>a+g.monto,0),0);
+  const tGastosTr=data.reduce((s,r)=>s+(r.gastos||[]).filter(g=>g.pago==='Transferencia').reduce((a,g)=>a+g.monto,0),0);
   const tSaldo=data.reduce((s,r)=>s+(r.saldo||0),0);
   const tEfectivoCaja=data.reduce((s,r)=>s+(r.efectivoCaja||0),0);
   const tDiferencia=data.reduce((s,r)=>{
-    const justificado=(r.efectivo||0)+(r.tarjeta||0)+(r.mp||0)+(r.salidaCC||0)+(r.gastos||[]).reduce((a,g)=>a+g.monto,0);
+    const gastosEf=(r.gastos||[]).filter(g=>g.pago==='Efectivo').reduce((a,g)=>a+g.monto,0);
+    const justificado=(r.efectivo||0)+(r.tarjeta||0)+(r.mp||0)+(r.salidaCC||0)+gastosEf;
     return s+((r.ventaFudo||0)-justificado);
   },0);
 
-  el.innerHTML=`<div class="card-title">${data.length} REGISTROS</div><div class="table-wrap"><table>
+  el.innerHTML=`
+    <!-- RESUMEN DESTACADO -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:16px;">
+      ${[
+        {lbl:'Efectivo',val:tEfectivo,color:'var(--accent-bdf)'},
+        {lbl:'Tarjeta',val:tTarjeta,color:'var(--accent-sb)'},
+        {lbl:'Mercado Pago',val:tMp,color:'#7c5cbf'},
+        {lbl:'Salida CC',val:tSalidaCC,color:'var(--red)',neg:true},
+        {lbl:'Ingreso CC',val:tIngresoCC,color:'var(--green)'},
+        {lbl:'Gastos Ef.',val:tGastosEf,color:'var(--red)',neg:true},
+        {lbl:'Gastos Transf.',val:tGastosTr,color:'var(--text-muted)'},
+      ].map(i=>`<div style="background:var(--surface2);border-radius:8px;padding:12px 14px;border:1px solid var(--border);">
+        <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">${i.lbl}</div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;font-weight:600;color:${i.color}">${i.neg?'−':''}${fmt(i.val)}</div>
+      </div>`).join('')}
+    </div>
+    <div class="card-title">${data.length} REGISTROS</div>
+    <div class="table-wrap"><table>
     <thead><tr><th>Fecha</th><th>Venta FUDO</th><th>Efectivo</th><th>Tarjeta</th><th>MP</th><th>Salida CC</th><th>Ingreso C/C</th><th>Gastos</th><th>💰 Ef. Caja</th><th>Saldo</th><th>Diferencia</th><th></th></tr></thead>
     <tbody>${data.map(r=>{
-      const gastos = r.gastos||[];
-      const totalGastos = gastos.reduce((s,g)=>s+g.monto,0);
-      const justificado=(r.efectivo||0)+(r.tarjeta||0)+(r.mp||0)+(r.salidaCC||0)+totalGastos;
+      const gastosEf=(r.gastos||[]).filter(g=>g.pago==='Efectivo').reduce((a,g)=>a+g.monto,0);
+      const justificado=(r.efectivo||0)+(r.tarjeta||0)+(r.mp||0)+(r.salidaCC||0)+gastosEf;
       const diferencia=(r.ventaFudo||0)-justificado;
+      const gastos=r.gastos||[];
       const gastosHtml = gastos.length ? gastos.map(g=>
         `<div style="font-size:11px;display:flex;gap:6px;align-items:center;margin-bottom:2px;">
           <span class="badge" style="background:rgba(232,67,147,.15);color:var(--accent-gas)">${g.tipo}</span>
@@ -881,7 +903,6 @@ function renderDiarioTable(bar) {
       </tr>`;}).join('')}</tbody></table></div>
     <div class="summary-row">
       <div class="summary-item"><span class="lbl">Total Venta:</span><span class="val pos">${fmt(tVenta)}</span></div>
-      <div class="summary-item"><span class="lbl">Total Gastos:</span><span class="val neg">${fmt(tGastos)}</span></div>
       <div class="summary-item"><span class="lbl">💰 Ef. en Caja:</span><span class="val ${cls(tEfectivoCaja)}">${fmtSign(tEfectivoCaja)}</span></div>
       <div class="summary-item"><span class="lbl">Saldo Total:</span><span class="val ${cls(tSaldo)}">${fmtSign(tSaldo)}</span></div>
       <div class="summary-item"><span class="lbl">Diferencia Total:</span><span class="val ${tDiferencia===0?'neutral':tDiferencia>0?'neg':'pos'}">${tDiferencia===0?'0':fmtSign(tDiferencia)}</span></div>
