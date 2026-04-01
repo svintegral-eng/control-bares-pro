@@ -140,9 +140,29 @@
         <div class="form-group"><label>Salida CC</label><input type="number" id="dbdf-salidaCC" placeholder="0" oninput="previewDiario('bdf')"></div>
         <div class="form-group"><label>Ingreso C/C</label><input type="number" id="dbdf-ingresoCC" placeholder="0" oninput="previewDiario('bdf')"></div>
         <div class="form-group"><label>Gasto Bar ($)</label><input type="number" id="dbdf-gastoBar" placeholder="0" oninput="previewDiario('bdf')"></div>
+        <div class="form-group"><label>Pago Gasto Bar</label>
+          <select id="dbdf-pagoBar" onchange="previewDiario('bdf')">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+          </select>
+        </div>
         <div class="form-group"><label>Detalle Gasto Bar</label><input type="text" id="dbdf-detalleBar" placeholder="Descripción"></div>
         <div class="form-group"><label>Gasto Food ($)</label><input type="number" id="dbdf-gastoFood" placeholder="0" oninput="previewDiario('bdf')"></div>
+        <div class="form-group"><label>Pago Gasto Food</label>
+          <select id="dbdf-pagoFood" onchange="previewDiario('bdf')">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+          </select>
+        </div>
         <div class="form-group"><label>Detalle Gasto Food</label><input type="text" id="dbdf-detalleFood" placeholder="Descripción"></div>
+      </div>
+      <!-- EFECTIVO EN CAJA -->
+      <div id="dbdf-caja-box" style="margin-top:16px;padding:16px 20px;border-radius:10px;background:rgba(240,165,0,.08);border:2px solid var(--accent-bdf);display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:11px;color:var(--accent-bdf);text-transform:uppercase;letter-spacing:2px;font-weight:600;">💰 Efectivo en Caja</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Efectivo − Gastos en efectivo</div>
+        </div>
+        <div id="dbdf-efectivo-caja" style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--accent-bdf);">$0</div>
       </div>
       <div class="row mt-14">
         <button class="btn btn-bdf" id="btn-save-dbdf" onclick="saveDiario('bdf')">Guardar</button>
@@ -170,9 +190,29 @@
         <div class="form-group"><label>Salida CC</label><input type="number" id="dsb-salidaCC" placeholder="0" oninput="previewDiario('sb')"></div>
         <div class="form-group"><label>Ingreso C/C</label><input type="number" id="dsb-ingresoCC" placeholder="0" oninput="previewDiario('sb')"></div>
         <div class="form-group"><label>Gasto Bar ($)</label><input type="number" id="dsb-gastoBar" placeholder="0" oninput="previewDiario('sb')"></div>
+        <div class="form-group"><label>Pago Gasto Bar</label>
+          <select id="dsb-pagoBar" onchange="previewDiario('sb')">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+          </select>
+        </div>
         <div class="form-group"><label>Detalle Gasto Bar</label><input type="text" id="dsb-detalleBar" placeholder="Descripción"></div>
         <div class="form-group"><label>Gasto Food ($)</label><input type="number" id="dsb-gastoFood" placeholder="0" oninput="previewDiario('sb')"></div>
+        <div class="form-group"><label>Pago Gasto Food</label>
+          <select id="dsb-pagoFood" onchange="previewDiario('sb')">
+            <option value="Efectivo">Efectivo</option>
+            <option value="Transferencia">Transferencia</option>
+          </select>
+        </div>
         <div class="form-group"><label>Detalle Gasto Food</label><input type="text" id="dsb-detalleFood" placeholder="Descripción"></div>
+      </div>
+      <!-- EFECTIVO EN CAJA -->
+      <div id="dsb-caja-box" style="margin-top:16px;padding:16px 20px;border-radius:10px;background:rgba(0,194,168,.08);border:2px solid var(--accent-sb);display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div style="font-size:11px;color:var(--accent-sb);text-transform:uppercase;letter-spacing:2px;font-weight:600;">💰 Efectivo en Caja</div>
+          <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">Efectivo − Gastos en efectivo</div>
+        </div>
+        <div id="dsb-efectivo-caja" style="font-family:'DM Mono',monospace;font-size:28px;font-weight:500;color:var(--accent-sb);">$0</div>
       </div>
       <div class="row mt-14">
         <button class="btn btn-sb" id="btn-save-dsb" onclick="saveDiario('sb')">Guardar</button>
@@ -500,8 +540,21 @@ function previewDiario(bar) {
   const p = bar==='bdf'?'dbdf':'dsb';
   const ef=num(p+'-efectivo'),tar=num(p+'-tarjeta'),mp=num(p+'-mp');
   const sCC=num(p+'-salidaCC'),iCC=num(p+'-ingresoCC'),gBar=num(p+'-gastoBar'),gFood=num(p+'-gastoFood');
+  const pagoBar = g(p+'-pagoBar')?.value || 'Efectivo';
+  const pagoFood = g(p+'-pagoFood')?.value || 'Efectivo';
   const saldo = ef+tar+mp-sCC+iCC-gBar-gFood;
   const el=g(p+'-preview'); if(el) el.innerHTML=`Saldo estimado: <span class="${cls(saldo)}">${fmtSign(saldo)}</span>`;
+
+  // Efectivo en caja
+  const gastoBarEfectivo = pagoBar === 'Efectivo' ? gBar : 0;
+  const gastoFoodEfectivo = pagoFood === 'Efectivo' ? gFood : 0;
+  const efectivoCaja = ef - gastoBarEfectivo - gastoFoodEfectivo;
+  const elCaja = g(p+'-efectivo-caja');
+  if(elCaja) {
+    elCaja.textContent = fmtSign(efectivoCaja);
+    elCaja.className = '';
+    elCaja.style.color = efectivoCaja >= 0 ? (bar==='bdf'?'var(--accent-bdf)':'var(--accent-sb)') : 'var(--red)';
+  }
 }
 function updateFoodAutoFields(bar) {
   const p = bar==='bdf'?'fbdf':'fsb';
@@ -549,18 +602,27 @@ async function saveDiario(bar) {
   const fecha=g(p+'-fecha').value; if(!fecha){toast('Completá la fecha','error');return;}
   const ef=num(p+'-efectivo'),tar=num(p+'-tarjeta'),mp=num(p+'-mp');
   const sCC=num(p+'-salidaCC'),iCC=num(p+'-ingresoCC'),gBar=num(p+'-gastoBar'),gFood=num(p+'-gastoFood');
+  const pagoBar=g(p+'-pagoBar')?.value||'Efectivo';
+  const pagoFood=g(p+'-pagoFood')?.value||'Efectivo';
+  const gastoBarEfectivo = pagoBar==='Efectivo'?gBar:0;
+  const gastoFoodEfectivo = pagoFood==='Efectivo'?gFood:0;
+  const efectivoCaja = ef - gastoBarEfectivo - gastoFoodEfectivo;
   const saldo=ef+tar+mp-sCC+iCC-gBar-gFood;
   const ventaFudo=num(p+'-ventaFudo');
   const id=Date.now();
   const data={id,fecha,ventaFudo,efectivo:ef,tarjeta:tar,mp,salidaCC:sCC,ingresoCC:iCC,
-    gastoBar:gBar,detalleBar:g(p+'-detalleBar').value,
-    gastoFood:gFood,detalleFood:g(p+'-detalleFood').value,saldo};
+    gastoBar:gBar,pagoBar,detalleBar:g(p+'-detalleBar').value,
+    gastoFood:gFood,pagoFood,detalleFood:g(p+'-detalleFood').value,
+    efectivoCaja,saldo};
   setBtnLoading('btn-save-d'+bar,true); syncDot('loading','Guardando...');
   try {
     await jsonp({action:'insert',sheet:'DIARIO_'+bar.toUpperCase(),...data});
     state.diario[bar].push(data);
     closeForm('diario-'+bar);
     ['ventaFudo','efectivo','tarjeta','mp','salidaCC','ingresoCC','gastoBar','detalleBar','gastoFood','detalleFood'].forEach(f=>{const el=g(p+'-'+f);if(el)el.value='';});
+    if(g(p+'-pagoBar')) g(p+'-pagoBar').value='Efectivo';
+    if(g(p+'-pagoFood')) g(p+'-pagoFood').value='Efectivo';
+    if(g(p+'-efectivo-caja')) g(p+'-efectivo-caja').textContent='$0';
     g(p+'-preview').innerHTML='';
     syncDot('ok','Guardado ✓'); toast('Guardado ✓'); render();
   } catch(e){ syncDot('error','Error'); toast('Error al guardar','error'); }
@@ -645,8 +707,9 @@ function renderDiarioTable(bar) {
   const tGastoBar=data.reduce((s,r)=>s+(r.gastoBar||0),0);
   const tGastoFood=data.reduce((s,r)=>s+(r.gastoFood||0),0);
   const tSaldo=data.reduce((s,r)=>s+(r.saldo||0),0);
+  const tEfectivoCaja=data.reduce((s,r)=>s+(r.efectivoCaja||0),0);
   el.innerHTML=`<div class="card-title">${data.length} REGISTROS</div><div class="table-wrap"><table>
-    <thead><tr><th>Fecha</th><th>Venta FUDO</th><th>Efectivo</th><th>Tarjeta</th><th>MP</th><th>Salida CC</th><th>Ingreso C/C</th><th>Gasto Bar</th><th>Det. Bar</th><th>Gasto Food</th><th>Det. Food</th><th>Saldo</th><th></th></tr></thead>
+    <thead><tr><th>Fecha</th><th>Venta FUDO</th><th>Efectivo</th><th>Tarjeta</th><th>MP</th><th>Salida CC</th><th>Ingreso C/C</th><th>Gasto Bar</th><th>Pago</th><th>Det. Bar</th><th>Gasto Food</th><th>Pago</th><th>Det. Food</th><th>💰 Ef. Caja</th><th>Saldo</th><th></th></tr></thead>
     <tbody>${data.map(r=>`<tr>
       <td class="mono">${r.fecha}</td>
       <td class="mono pos">${fmt(r.ventaFudo||0)}</td>
@@ -656,9 +719,12 @@ function renderDiarioTable(bar) {
       <td class="mono neg">${r.salidaCC?fmt(r.salidaCC):'—'}</td>
       <td class="mono pos">${r.ingresoCC?fmt(r.ingresoCC):'—'}</td>
       <td class="mono neg">${r.gastoBar?fmt(r.gastoBar):'—'}</td>
+      <td><span class="badge" style="${r.pagoBar==='Transferencia'?'background:rgba(0,194,168,.15);color:var(--accent-sb)':'background:rgba(240,165,0,.15);color:var(--accent-bdf)'}">${r.pagoBar||'Ef.'}</span></td>
       <td style="color:var(--text-muted)">${r.detalleBar||'—'}</td>
       <td class="mono neg">${r.gastoFood?fmt(r.gastoFood):'—'}</td>
+      <td><span class="badge" style="${r.pagoFood==='Transferencia'?'background:rgba(0,194,168,.15);color:var(--accent-sb)':'background:rgba(240,165,0,.15);color:var(--accent-bdf)'}">${r.pagoFood||'Ef.'}</span></td>
       <td style="color:var(--text-muted)">${r.detalleFood||'—'}</td>
+      <td class="mono ${cls(r.efectivoCaja||0)}" style="font-weight:600">${r.efectivoCaja!==undefined?fmtSign(r.efectivoCaja):'—'}</td>
       <td class="mono ${cls(r.saldo||0)}">${fmtSign(r.saldo||0)}</td>
       <td><button class="btn btn-danger" onclick="deleteDiario('${bar}','${r.id}')">✕</button></td>
     </tr>`).join('')}</tbody></table></div>
@@ -666,6 +732,7 @@ function renderDiarioTable(bar) {
       <div class="summary-item"><span class="lbl">Total Venta:</span><span class="val pos">${fmt(tVenta)}</span></div>
       <div class="summary-item"><span class="lbl">Gastos Bar:</span><span class="val neg">${fmt(tGastoBar)}</span></div>
       <div class="summary-item"><span class="lbl">Gastos Food:</span><span class="val neg">${fmt(tGastoFood)}</span></div>
+      <div class="summary-item"><span class="lbl">💰 Ef. en Caja:</span><span class="val ${cls(tEfectivoCaja)}">${fmtSign(tEfectivoCaja)}</span></div>
       <div class="summary-item"><span class="lbl">Saldo Total:</span><span class="val ${cls(tSaldo)}">${fmtSign(tSaldo)}</span></div>
     </div>`;
 }
