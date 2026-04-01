@@ -84,7 +84,13 @@
   .bar-section{background:var(--surface2);border-radius:10px;padding:16px;margin-bottom:16px;}
   .bar-section-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;margin-bottom:12px;}
   .pct-badge{font-family:'DM Mono',monospace;font-size:13px;padding:3px 10px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);}
+  .chart-container{position:relative;width:100%;height:280px;}
+  .chart-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+  .chart-tab{padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;border:1px solid var(--border);background:none;color:var(--text-muted);font-family:'DM Sans',sans-serif;transition:all .2s;}
+  .chart-tab:hover{color:var(--text);}
+  .chart-tab.active{background:var(--surface2);color:var(--text);border-color:var(--text-muted);}
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -114,6 +120,17 @@
       <button class="btn btn-ghost" onclick="loadAll()">↻ Actualizar</button>
     </div>
     <div id="dash-content"></div>
+    <div class="card mt-20">
+      <div class="card-title">Estadísticas Mes a Mes</div>
+      <div class="chart-tabs">
+        <button class="chart-tab active" onclick="setDashChart('ventas',this)">Ventas</button>
+        <button class="chart-tab" onclick="setDashChart('resultado',this)">Resultado</button>
+        <button class="chart-tab" onclick="setDashChart('rentabilidad',this)">Rentabilidad %</button>
+        <button class="chart-tab" onclick="setDashChart('variacion',this)">Variación vs Mes Ant.</button>
+        <button class="chart-tab" onclick="setDashChart('variacionAnio',this)">Variación vs Año Ant.</button>
+      </div>
+      <div class="chart-container"><canvas id="chart-dash"></canvas></div>
+    </div>
   </div>
 
   <!-- DIARIO BDF -->
@@ -121,6 +138,17 @@
     <div class="section-head">
       <div class="section-title" style="color:var(--accent-bdf)">Diario — BDF</div>
       <button class="btn btn-bdf" onclick="openForm('diario-bdf')">+ Nuevo Día</button>
+    </div>
+    <div class="card mt-20">
+      <div class="card-title">Estadísticas BDF — Mes a Mes</div>
+      <div class="chart-tabs">
+        <button class="chart-tab active" onclick="setBarChart('bdf','ventas',this)">Ventas</button>
+        <button class="chart-tab" onclick="setBarChart('bdf','resultado',this)">Resultado</button>
+        <button class="chart-tab" onclick="setBarChart('bdf','rentabilidad',this)">Rentabilidad %</button>
+        <button class="chart-tab" onclick="setBarChart('bdf','variacion',this)">Variación vs Mes Ant.</button>
+        <button class="chart-tab" onclick="setBarChart('bdf','variacionAnio',this)">Variación vs Año Ant.</button>
+      </div>
+      <div class="chart-container"><canvas id="chart-bdf"></canvas></div>
     </div>
     <div id="form-diario-bdf" style="display:none" class="card">
       <div class="card-title">Registrar Día</div>
@@ -151,6 +179,17 @@
     <div class="section-head">
       <div class="section-title" style="color:var(--accent-sb)">Diario — SB</div>
       <button class="btn btn-sb" onclick="openForm('diario-sb')">+ Nuevo Día</button>
+    </div>
+    <div class="card mt-20">
+      <div class="card-title">Estadísticas SB — Mes a Mes</div>
+      <div class="chart-tabs">
+        <button class="chart-tab active" onclick="setBarChart('sb','ventas',this)">Ventas</button>
+        <button class="chart-tab" onclick="setBarChart('sb','resultado',this)">Resultado</button>
+        <button class="chart-tab" onclick="setBarChart('sb','rentabilidad',this)">Rentabilidad %</button>
+        <button class="chart-tab" onclick="setBarChart('sb','variacion',this)">Variación vs Mes Ant.</button>
+        <button class="chart-tab" onclick="setBarChart('sb','variacionAnio',this)">Variación vs Año Ant.</button>
+      </div>
+      <div class="chart-container"><canvas id="chart-sb"></canvas></div>
     </div>
     <div id="form-diario-sb" style="display:none" class="card">
       <div class="card-title">Registrar Día</div>
@@ -741,6 +780,155 @@ function render() {
   renderDiarioTable('bdf'); renderDiarioTable('sb');
   renderPersonalTable('bdf'); renderPersonalTable('sb');
   renderFoodTable('bdf'); renderFoodTable('sb');
+  setTimeout(renderCharts, 50);
+}
+
+// ── CHART LOGIC ────────────────────────────────────────────────
+const chartInstances = {};
+
+function getMonthlyStats(bar) {
+  const byMonth = {};
+  state.diario[bar].forEach(r => {
+    if(!r.fecha) return;
+    const m = String(r.fecha).slice(0,7);
+    if(!byMonth[m]) byMonth[m] = {venta:0, gastoBar:0, gastoFood:0, saldo:0, dias:0};
+    byMonth[m].venta += r.ventaFudo||0;
+    byMonth[m].gastoBar += r.gastoBar||0;
+    byMonth[m].gastoFood += r.gastoFood||0;
+    byMonth[m].saldo += r.saldo||0;
+    byMonth[m].dias++;
+  });
+  state.personal[bar].forEach(r => {
+    if(!r.fecha) return;
+    const m = String(r.fecha).slice(0,7);
+    if(!byMonth[m]) byMonth[m] = {venta:0, gastoBar:0, gastoFood:0, saldo:0, dias:0, personalBar:0, personalCocina:0};
+    if(r.area==='Bar') byMonth[m].personalBar = (byMonth[m].personalBar||0)+(r.monto||0);
+    if(r.area==='Cocina') byMonth[m].personalCocina = (byMonth[m].personalCocina||0)+(r.monto||0);
+  });
+  const months = Object.keys(byMonth).sort();
+  return months.map((m,i) => {
+    const d = byMonth[m];
+    const ventaFood = state.food[bar].find(f=>f.mes===m)?.ventaFood||0;
+    const resultado = d.saldo - (d.personalBar||0) - (d.personalCocina||0);
+    const rentabilidad = d.venta > 0 ? resultado/d.venta : 0;
+    const prev = i > 0 ? byMonth[months[i-1]] : null;
+    const prevVenta = prev ? prev.venta : null;
+    const variacion = prevVenta ? (d.venta - prevVenta)/prevVenta : null;
+    const prevYear = months[i-12] ? byMonth[months[i-12]] : null;
+    const variacionAnio = prevYear ? (d.venta - prevYear.venta)/prevYear.venta : null;
+    return { mes:m, venta:d.venta, resultado, rentabilidad, variacion, variacionAnio };
+  });
+}
+
+function buildChartData(statsArr, metric, color) {
+  const labels = statsArr.map(s => s.mes);
+  const data = statsArr.map(s => {
+    if(metric==='ventas') return s.venta;
+    if(metric==='resultado') return s.resultado;
+    if(metric==='rentabilidad') return +(s.rentabilidad*100).toFixed(2);
+    if(metric==='variacion') return s.variacion!==null ? +(s.variacion*100).toFixed(2) : null;
+    if(metric==='variacionAnio') return s.variacionAnio!==null ? +(s.variacionAnio*100).toFixed(2) : null;
+    return 0;
+  });
+  return {labels, data};
+}
+
+function drawChart(canvasId, datasets, labels, metric) {
+  if(chartInstances[canvasId]) chartInstances[canvasId].destroy();
+  const ctx = document.getElementById(canvasId);
+  if(!ctx) return;
+  const isPct = ['rentabilidad','variacion','variacionAnio'].includes(metric);
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{
+        legend:{labels:{color:'#6b6b8a',font:{family:'DM Sans',size:11}}},
+        tooltip:{
+          backgroundColor:'#12121a',
+          borderColor:'#2a2a3a',
+          borderWidth:1,
+          titleColor:'#e8e8f0',
+          bodyColor:'#6b6b8a',
+          callbacks:{
+            label: ctx => {
+              const v = ctx.parsed.y;
+              if(v===null||v===undefined) return ctx.dataset.label+': N/D';
+              return ctx.dataset.label+': '+(isPct ? v.toFixed(1)+'%' : '$'+Math.abs(v).toLocaleString('es-AR'));
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{color:'#6b6b8a',font:{size:10}},grid:{color:'rgba(255,255,255,.05)'}},
+        y:{ticks:{color:'#6b6b8a',font:{size:10},callback:v=>isPct?v+'%':'$'+Math.abs(v).toLocaleString('es-AR')},grid:{color:'rgba(255,255,255,.05)'}}
+      }
+    }
+  });
+}
+
+let dashChartMetric = 'ventas';
+let barChartMetric = {bdf:'ventas', sb:'ventas'};
+
+function setDashChart(metric, btn) {
+  dashChartMetric = metric;
+  document.querySelectorAll('#page-dashboard .chart-tab').forEach(t=>t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderDashChart();
+}
+
+function setBarChart(bar, metric, btn) {
+  barChartMetric[bar] = metric;
+  const page = document.getElementById('page-diario-'+bar);
+  page.querySelectorAll('.chart-tab').forEach(t=>t.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderBarChart(bar);
+}
+
+function renderDashChart() {
+  const statsBdf = getMonthlyStats('bdf');
+  const statsSb = getMonthlyStats('sb');
+  const allMonths = [...new Set([...statsBdf.map(s=>s.mes),...statsSb.map(s=>s.mes)])].sort();
+  const isPct = ['rentabilidad','variacion','variacionAnio'].includes(dashChartMetric);
+
+  const getVal = (stats, m) => {
+    const s = stats.find(x=>x.mes===m);
+    if(!s) return null;
+    if(dashChartMetric==='ventas') return s.venta;
+    if(dashChartMetric==='resultado') return s.resultado;
+    if(dashChartMetric==='rentabilidad') return +(s.rentabilidad*100).toFixed(2);
+    if(dashChartMetric==='variacion') return s.variacion!==null?+(s.variacion*100).toFixed(2):null;
+    if(dashChartMetric==='variacionAnio') return s.variacionAnio!==null?+(s.variacionAnio*100).toFixed(2):null;
+    return null;
+  };
+
+  const datasets = [
+    {label:'BDF', data:allMonths.map(m=>getVal(statsBdf,m)), borderColor:'#f0a500', backgroundColor:'rgba(240,165,0,.1)', tension:.4, pointRadius:4, pointHoverRadius:6, fill:true, spanGaps:true},
+    {label:'SB', data:allMonths.map(m=>getVal(statsSb,m)), borderColor:'#00c2a8', backgroundColor:'rgba(0,194,168,.1)', tension:.4, pointRadius:4, pointHoverRadius:6, fill:true, spanGaps:true},
+  ];
+  drawChart('chart-dash', datasets, allMonths, dashChartMetric);
+}
+
+function renderBarChart(bar) {
+  const stats = getMonthlyStats(bar);
+  const metric = barChartMetric[bar];
+  const {labels, data} = buildChartData(stats, metric, bar);
+  const color = bar==='bdf'?'#f0a500':'#00c2a8';
+  const bg = bar==='bdf'?'rgba(240,165,0,.1)':'rgba(0,194,168,.1)';
+  const datasets = [{
+    label: bar.toUpperCase(),
+    data, borderColor:color, backgroundColor:bg,
+    tension:.4, pointRadius:4, pointHoverRadius:6, fill:true, spanGaps:true
+  }];
+  drawChart('chart-'+bar, datasets, labels, metric);
+}
+
+function renderCharts() {
+  renderDashChart();
+  renderBarChart('bdf');
+  renderBarChart('sb');
 }
 
 render();
