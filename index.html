@@ -391,6 +391,46 @@ function toast(msg, type='success') {
   setTimeout(()=>el.remove(), 3000);
 }
 
+// ── FORMATEO DE MILES EN INPUTS ────────────────────────────────
+function setupNumericInputs() {
+  document.querySelectorAll('input[type="number"]').forEach(input => {
+    // Cambiar a tipo text para poder mostrar separadores
+    input.type = 'text';
+    input.inputMode = 'numeric';
+
+    input.addEventListener('input', function() {
+      const cursorPos = this.selectionStart;
+      const rawVal = this.value.replace(/\./g,'').replace(/[^0-9-]/g,'');
+      if(rawVal === '' || rawVal === '-') return;
+      const num = parseInt(rawVal, 10);
+      if(isNaN(num)) return;
+      const formatted = num.toLocaleString('es-AR');
+      this.value = formatted;
+      // Ajustar cursor
+      const diff = formatted.length - rawVal.length;
+      try { this.setSelectionRange(cursorPos + diff, cursorPos + diff); } catch(e){}
+    });
+
+    input.addEventListener('keydown', function(e) {
+      // Permitir backspace, delete, tab, arrows
+      if([8,9,37,38,39,40,46].includes(e.keyCode)) return;
+      // Permitir números
+      if(e.key >= '0' && e.key <= '9') return;
+      // Permitir signo menos solo al inicio
+      if(e.key === '-' && this.selectionStart === 0) return;
+      e.preventDefault();
+    });
+  });
+}
+
+// Leer valor real de un input formateado
+function numFromInput(id) {
+  const el = document.getElementById(id);
+  if(!el) return 0;
+  const raw = el.value.replace(/\./g,'').replace(/[^0-9-]/g,'');
+  return parseFloat(raw) || 0;
+}
+
 // ── LOAD ───────────────────────────────────────────────────────
 async function loadAll() {
   syncDot('loading','Cargando...');
@@ -447,7 +487,7 @@ function closeForm(id) { document.getElementById('form-'+id).style.display='none
 
 // ── UTILS ──────────────────────────────────────────────────────
 function g(id){return document.getElementById(id);}
-function num(id){return parseFloat(g(id).value)||0;}
+function num(id){ return numFromInput(id); }
 const fmt = v => '$'+Math.abs(v).toLocaleString('es-AR');
 const fmtSign = v => (v<0?'−':'')+fmt(v);
 const fmtPct = v => (v*100).toFixed(1)+'%';
@@ -946,6 +986,7 @@ function renderCharts() {
 
 render();
 loadAll();
+setupNumericInputs();
 </script>
 </body>
 </html>
