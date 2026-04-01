@@ -245,11 +245,20 @@
     <div id="form-food-bdf" style="display:none" class="card">
       <div class="card-title">Cargar Mes de Food</div>
       <div class="form-grid">
-        <div class="form-group"><label>Mes</label><input type="month" id="fbdf-mes"></div>
+        <div class="form-group"><label>Mes</label><input type="month" id="fbdf-mes" oninput="updateFoodAutoFields('bdf')"></div>
         <div class="form-group"><label>Venta Food ($)</label><input type="number" id="fbdf-ventaFood" placeholder="0" oninput="previewFood('bdf')"></div>
         <div class="form-group"><label>Otros Gastos ($)</label><input type="number" id="fbdf-otrosGastos" placeholder="0" oninput="previewFood('bdf')"></div>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">💡 Los gastos de materia prima y personal de cocina se calculan automáticamente desde el Diario y Personal.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);">
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Gasto Mat. Prima (del Diario)</div>
+          <div id="fbdf-auto-materia" style="font-family:'DM Mono',monospace;font-size:18px;color:var(--red);">$0</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Personal Cocina (del Personal)</div>
+          <div id="fbdf-auto-personal" style="font-family:'DM Mono',monospace;font-size:18px;color:var(--red);">$0</div>
+        </div>
+      </div>
       <div class="row mt-14">
         <button class="btn btn-food" id="btn-save-fbdf" onclick="saveFood('bdf')">Guardar</button>
         <button class="btn btn-ghost" onclick="closeForm('food-bdf')">Cancelar</button>
@@ -268,11 +277,20 @@
     <div id="form-food-sb" style="display:none" class="card">
       <div class="card-title">Cargar Mes de Food</div>
       <div class="form-grid">
-        <div class="form-group"><label>Mes</label><input type="month" id="fsb-mes"></div>
+        <div class="form-group"><label>Mes</label><input type="month" id="fsb-mes" oninput="updateFoodAutoFields('sb')"></div>
         <div class="form-group"><label>Venta Food ($)</label><input type="number" id="fsb-ventaFood" placeholder="0" oninput="previewFood('sb')"></div>
         <div class="form-group"><label>Otros Gastos ($)</label><input type="number" id="fsb-otrosGastos" placeholder="0" oninput="previewFood('sb')"></div>
       </div>
-      <p style="font-size:12px;color:var(--text-muted);margin-top:12px;">💡 Los gastos de materia prima y personal de cocina se calculan automáticamente desde el Diario y Personal.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px;padding:14px;background:var(--surface2);border-radius:10px;border:1px solid var(--border);">
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Gasto Mat. Prima (del Diario)</div>
+          <div id="fsb-auto-materia" style="font-family:'DM Mono',monospace;font-size:18px;color:var(--red);">$0</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Personal Cocina (del Personal)</div>
+          <div id="fsb-auto-personal" style="font-family:'DM Mono',monospace;font-size:18px;color:var(--red);">$0</div>
+        </div>
+      </div>
       <div class="row mt-14">
         <button class="btn btn-food" id="btn-save-fsb" onclick="saveFood('sb')">Guardar</button>
         <button class="btn btn-ghost" onclick="closeForm('food-sb')">Cancelar</button>
@@ -372,8 +390,8 @@ function openForm(id) {
   const today=new Date().toISOString().slice(0,10), month=new Date().toISOString().slice(0,7);
   const map = {'diario-bdf':'dbdf-fecha','diario-sb':'dsb-fecha','personal-bdf':'pbdf-fecha','personal-sb':'psb-fecha'};
   if(map[id]) g(map[id]).value=today;
-  if(id==='food-bdf') g('fbdf-mes').value=month;
-  if(id==='food-sb') g('fsb-mes').value=month;
+  if(id==='food-bdf') { g('fbdf-mes').value=month; updateFoodAutoFields('bdf'); }
+  if(id==='food-sb') { g('fsb-mes').value=month; updateFoodAutoFields('sb'); }
 }
 function closeForm(id) { document.getElementById('form-'+id).style.display='none'; }
 
@@ -395,6 +413,20 @@ function previewDiario(bar) {
   const saldo = ef+tar+mp-sCC+iCC-gBar-gFood;
   const el=g(p+'-preview'); if(el) el.innerHTML=`Saldo estimado: <span class="${cls(saldo)}">${fmtSign(saldo)}</span>`;
 }
+function updateFoodAutoFields(bar) {
+  const p = bar==='bdf'?'fbdf':'fsb';
+  const mes = g(p+'-mes').value;
+  if(!mes) return;
+  const mesKey = mes.slice(0,7);
+  const gMateria = calcGastoFoodDiario(bar, mesKey);
+  const gPersonal = calcPersonalCocina(bar, mesKey);
+  const elM = g(p+'-auto-materia');
+  const elP = g(p+'-auto-personal');
+  if(elM) elM.textContent = fmt(gMateria);
+  if(elP) elP.textContent = fmt(gPersonal);
+  previewFood(bar);
+}
+
 function previewFood(bar) {
   const p = bar==='bdf'?'fbdf':'fsb';
   const mes = g(p+'-mes').value;
