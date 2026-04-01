@@ -109,6 +109,7 @@
   <div class="sync-status">
     <div class="sync-dot loading" id="sync-dot"></div>
     <span id="sync-label">Conectando...</span>
+    <span id="queue-badge" style="display:none;background:var(--red);color:#fff;font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;cursor:pointer" onclick="syncQueue()"></span>
   </div>
 </div>
 
@@ -471,6 +472,63 @@ function numFromInput(id) {
   return parseFloat(el.value.replace(/\./g,'').replace(/[^0-9]/g,'')) || 0;
 }
 
+// ── OFFLINE QUEUE ──────────────────────────────────────────────
+const QUEUE_KEY = 'cbpro_offline_queue';
+
+function loadQueue() {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY)||'[]'); } catch(e){ return []; }
+}
+function saveQueue(q) { localStorage.setItem(QUEUE_KEY, JSON.stringify(q)); }
+function addToQueue(params) {
+  const q = loadQueue();
+  q.push({params, ts: Date.now()});
+  saveQueue(q);
+  updateQueueBadge();
+}
+function updateQueueBadge() {
+  const q = loadQueue();
+  const badge = document.getElementById('queue-badge');
+  if(!badge) return;
+  if(q.length > 0) {
+    badge.textContent = q.length + ' pendiente'+(q.length>1?'s':'');
+    badge.style.display = 'inline-block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+async function syncQueue() {
+  const q = loadQueue();
+  if(q.length === 0) return;
+  syncDot('loading', 'Sincronizando...');
+  let synced = 0, failed = [];
+  for(const item of q) {
+    try {
+      await jsonp(item.params);
+      synced++;
+    } catch(e) {
+      failed.push(item);
+    }
+  }
+  saveQueue(failed);
+  updateQueueBadge();
+  if(synced > 0) {
+    toast(`${synced} registro${synced>1?'s':''} sincronizado${synced>1?'s':''} ✓`);
+    await loadAll();
+  }
+  if(failed.length > 0) {
+    syncDot('error', `${failed.length} pendiente${failed.length>1?'s':''}`);
+  } else {
+    syncDot('ok', 'Sincronizado ✓');
+  }
+}
+
+// Intentar sincronizar cada vez que hay conexión
+window.addEventListener('online', () => {
+  toast('Conexión restaurada — sincronizando...');
+  setTimeout(syncQueue, 1000);
+});
+
 // ── LOAD ───────────────────────────────────────────────────────
 async function loadAll() {
   syncDot('loading','Cargando...');
@@ -489,11 +547,25 @@ async function loadAll() {
     state.personal.sb = pSb.map(toNum);
     state.food.bdf = fBdf.map(toNum);
     state.food.sb = fSb.map(toNum);
+    // Guardar copia local
+    localStorage.setItem('cbpro_cache', JSON.stringify(state));
     syncDot('ok','Sincronizado ✓');
+    updateQueueBadge();
     render();
   } catch(e) {
     syncDot('error','Sin conexión');
-    toast('Error al conectar', 'error');
+    // Cargar desde caché local
+    try {
+      const cached = JSON.parse(localStorage.getItem('cbpro_cache')||'null');
+      if(cached) {
+        state.diario = cached.diario||{bdf:[],sb:[]};
+        state.personal = cached.personal||{bdf:[],sb:[]};
+        state.food = cached.food||{bdf:[],sb:[]};
+        toast('Sin conexión — mostrando datos guardados localmente', 'error');
+        render();
+      }
+    } catch(ce){}
+    updateQueueBadge();
   }
 }
 
@@ -619,19 +691,28 @@ async function saveDiario(bar) {
     gastoBar:gBar,pagoBar,detalleBar:g(p+'-detalleBar').value,
     gastoFood:gFood,pagoFood,detalleFood:g(p+'-detalleFood').value,
     efectivoCaja,saldo};
+  const params = {action:'insert',sheet:'DIARIO_'+bar.toUpperCase(),...data};
   setBtnLoading('btn-save-d'+bar,true); syncDot('loading','Guardando...');
   try {
-    await jsonp({action:'insert',sheet:'DIARIO_'+bar.toUpperCase(),...data});
-    state.diario[bar].push(data);
-    closeForm('diario-'+bar);
-    ['ventaFudo','efectivo','tarjeta','mp','salidaCC','ingresoCC','gastoBar','detalleBar','gastoFood','detalleFood'].forEach(f=>{const el=g(p+'-'+f);if(el)el.value='';});
-    if(g(p+'-pagoBar')) g(p+'-pagoBar').value='Efectivo';
-    if(g(p+'-pagoFood')) g(p+'-pagoFood').value='Efectivo';
-    if(g(p+'-efectivo-caja')) g(p+'-efectivo-caja').textContent='$0';
-    g(p+'-preview').innerHTML='';
-    syncDot('ok','Guardado ✓'); toast('Guardado ✓'); render();
-  } catch(e){ syncDot('error','Error'); toast('Error al guardar','error'); }
+    await jsonp(params);
+    syncDot('ok','Guardado ✓'); toast('Guardado ✓');
+  } catch(e){
+    // Sin conexión — guardar en cola
+    addToQueue(params);
+    toast('Sin conexión — guardado localmente, se sincronizará después', 'error');
+    syncDot('error', loadQueue().length+' pendiente/s');
+  }
+  state.diario[bar].push(data);
+  // Actualizar caché local
+  localStorage.setItem('cbpro_cache', JSON.stringify(state));
+  closeForm('diario-'+bar);
+  ['ventaFudo','efectivo','tarjeta','mp','salidaCC','ingresoCC','gastoBar','detalleBar','gastoFood','detalleFood'].forEach(f=>{const el=g(p+'-'+f);if(el)el.value='';});
+  if(g(p+'-pagoBar')) g(p+'-pagoBar').value='Efectivo';
+  if(g(p+'-pagoFood')) g(p+'-pagoFood').value='Efectivo';
+  if(g(p+'-efectivo-caja')) g(p+'-efectivo-caja').textContent='$0';
+  g(p+'-preview').innerHTML='';
   setBtnLoading('btn-save-d'+bar,false);
+  render();
 }
 async function deleteDiario(bar,id) {
   if(!confirm('¿Eliminar?')) return;
@@ -650,16 +731,23 @@ async function savePersonal(bar) {
   if(!fecha||!nombre||!area){toast('Completá fecha, nombre y área','error');return;}
   const id=Date.now(), monto=num(p+'-monto');
   const data={id,fecha,nombre,area,concepto:g(p+'-concepto').value,monto,obs:g(p+'-obs').value};
+  const params={action:'insert',sheet:'PERSONAL_'+bar.toUpperCase(),...data};
   setBtnLoading('btn-save-p'+bar,true); syncDot('loading','Guardando...');
   try {
-    await jsonp({action:'insert',sheet:'PERSONAL_'+bar.toUpperCase(),...data});
-    state.personal[bar].push(data);
-    closeForm('personal-'+bar);
-    ['nombre','concepto','monto','obs'].forEach(f=>{const el=g(p+'-'+f);if(el)el.value='';});
-    g(p+'-area').value='';
-    syncDot('ok','Guardado ✓'); toast('Guardado ✓'); render();
-  } catch(e){ syncDot('error','Error'); toast('Error al guardar','error'); }
+    await jsonp(params);
+    syncDot('ok','Guardado ✓'); toast('Guardado ✓');
+  } catch(e){
+    addToQueue(params);
+    toast('Sin conexión — guardado localmente', 'error');
+    syncDot('error', loadQueue().length+' pendiente/s');
+  }
+  state.personal[bar].push(data);
+  localStorage.setItem('cbpro_cache', JSON.stringify(state));
+  closeForm('personal-'+bar);
+  ['nombre','concepto','monto','obs'].forEach(f=>{const el=g(p+'-'+f);if(el)el.value='';});
+  g(p+'-area').value='';
   setBtnLoading('btn-save-p'+bar,false);
+  render();
 }
 async function deletePersonal(bar,id) {
   if(!confirm('¿Eliminar?')) return;
@@ -1137,6 +1225,7 @@ render();
 loadAll();
 document.addEventListener('DOMContentLoaded', setupNumericInputs);
 setTimeout(setupNumericInputs, 500);
+updateQueueBadge();
 </script>
 </body>
 </html>
