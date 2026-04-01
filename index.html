@@ -713,11 +713,11 @@ function renderDiarioTable(bar) {
   const tGastoFood=data.reduce((s,r)=>s+(r.gastoFood||0),0);
   const tSaldo=data.reduce((s,r)=>s+(r.saldo||0),0);
   const tEfectivoCaja=data.reduce((s,r)=>s+(r.efectivoCaja||0),0);
-  const tDiferencia=data.reduce((s,r)=>s+((r.ventaFudo||0)-(r.saldo||0)),0);
+  const tDiferencia=data.reduce((s,r)=>s+((r.saldo||0)-(r.ventaFudo||0)),0);
   el.innerHTML=`<div class="card-title">${data.length} REGISTROS</div><div class="table-wrap"><table>
     <thead><tr><th>Fecha</th><th>Venta FUDO</th><th>Efectivo</th><th>Tarjeta</th><th>MP</th><th>Salida CC</th><th>Ingreso C/C</th><th>Gasto Bar</th><th>Pago</th><th>Det. Bar</th><th>Gasto Food</th><th>Pago</th><th>Det. Food</th><th>💰 Ef. Caja</th><th>Saldo</th><th>Diferencia</th><th></th></tr></thead>
     <tbody>${data.map(r=>{
-      const diferencia = (r.ventaFudo||0)-(r.saldo||0);
+      const diferencia = (r.saldo||0)-(r.ventaFudo||0);
       return `<tr>
       <td class="mono">${r.fecha}</td>
       <td class="mono pos">${fmt(r.ventaFudo||0)}</td>
@@ -734,7 +734,7 @@ function renderDiarioTable(bar) {
       <td style="color:var(--text-muted)">${r.detalleFood||'—'}</td>
       <td class="mono ${cls(r.efectivoCaja||0)}" style="font-weight:600">${r.efectivoCaja!==undefined?fmtSign(r.efectivoCaja):'—'}</td>
       <td class="mono ${cls(r.saldo||0)}">${fmtSign(r.saldo||0)}</td>
-      <td class="mono ${cls(-diferencia)}">${fmtSign(diferencia)}</td>
+      <td class="mono ${diferencia>0?'pos':diferencia<0?'neg':'neutral'}" style="font-weight:600">${diferencia===0?'0':fmtSign(diferencia)}</td>
       <td style="display:flex;gap:4px">
         <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="editDiario('${bar}','${r.id}')">✏️</button>
         <button class="btn btn-danger" onclick="deleteDiario('${bar}','${r.id}')">✕</button>
@@ -746,7 +746,7 @@ function renderDiarioTable(bar) {
       <div class="summary-item"><span class="lbl">Gastos Food:</span><span class="val neg">${fmt(tGastoFood)}</span></div>
       <div class="summary-item"><span class="lbl">💰 Ef. en Caja:</span><span class="val ${cls(tEfectivoCaja)}">${fmtSign(tEfectivoCaja)}</span></div>
       <div class="summary-item"><span class="lbl">Saldo Total:</span><span class="val ${cls(tSaldo)}">${fmtSign(tSaldo)}</span></div>
-      <div class="summary-item"><span class="lbl">Diferencia Total:</span><span class="val ${cls(-tDiferencia)}">${fmtSign(tDiferencia)}</span></div>
+      <div class="summary-item"><span class="lbl">Diferencia Total:</span><span class="val ${tDiferencia>0?'pos':tDiferencia<0?'neg':'neutral'}">${tDiferencia===0?'0':fmtSign(tDiferencia)}</span></div>
     </div>`;
 }
 
