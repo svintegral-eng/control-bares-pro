@@ -564,22 +564,32 @@ window.addEventListener('online', () => {
 
 // ── LOAD ───────────────────────────────────────────────────────
 async function loadAll() {
-  syncDot('loading','Cargando...');
+  // Primero cargar caché local inmediatamente
   try {
-    syncDot('loading','Cargando diarios...');
+    const cached = JSON.parse(localStorage.getItem('cbpro_cache')||'null');
+    if(cached) {
+      state.diario   = cached.diario||{bdf:[],sb:[]};
+      state.personal = cached.personal||{bdf:[],sb:[]};
+      state.food     = cached.food||{bdf:[],sb:[]};
+      syncDot('loading','Actualizando...');
+      render();
+    }
+  } catch(ce){}
+
+  // Luego sincronizar con Google Sheets en segundo plano
+  syncDot('loading','Conectando...');
+  try {
     const dBdf = await jsonp({action:'getAll',sheet:'DIARIO_BDF'});
+    state.diario.bdf = dBdf.map(toNum); render();
     const dSb  = await jsonp({action:'getAll',sheet:'DIARIO_SB'});
-    syncDot('loading','Cargando personal...');
+    state.diario.sb  = dSb.map(toNum); render();
     const pBdf = await jsonp({action:'getAll',sheet:'PERSONAL_BDF'});
-    const pSb  = await jsonp({action:'getAll',sheet:'PERSONAL_SB'});
-    syncDot('loading','Cargando food...');
-    const fBdf = await jsonp({action:'getAll',sheet:'RESUMEN_FOOD_BDF'});
-    const fSb  = await jsonp({action:'getAll',sheet:'RESUMEN_FOOD_SB'});
-    state.diario.bdf = dBdf.map(toNum);
-    state.diario.sb  = dSb.map(toNum);
     state.personal.bdf = pBdf.map(toNum);
+    const pSb  = await jsonp({action:'getAll',sheet:'PERSONAL_SB'});
     state.personal.sb  = pSb.map(toNum);
+    const fBdf = await jsonp({action:'getAll',sheet:'RESUMEN_FOOD_BDF'});
     state.food.bdf = fBdf.map(toNum);
+    const fSb  = await jsonp({action:'getAll',sheet:'RESUMEN_FOOD_SB'});
     state.food.sb  = fSb.map(toNum);
     localStorage.setItem('cbpro_cache', JSON.stringify(state));
     syncDot('ok','Sincronizado ✓');
@@ -587,17 +597,8 @@ async function loadAll() {
     render();
   } catch(e) {
     syncDot('error','Sin conexión');
-    try {
-      const cached = JSON.parse(localStorage.getItem('cbpro_cache')||'null');
-      if(cached) {
-        state.diario   = cached.diario||{bdf:[],sb:[]};
-        state.personal = cached.personal||{bdf:[],sb:[]};
-        state.food     = cached.food||{bdf:[],sb:[]};
-        toast('Sin conexión — mostrando datos guardados localmente', 'error');
-        render();
-      }
-    } catch(ce){}
     updateQueueBadge();
+    toast('No se pudo conectar — usando datos locales', 'error');
   }
 }
 
