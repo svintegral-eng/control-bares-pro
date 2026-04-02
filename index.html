@@ -429,6 +429,7 @@ let state = {
   food: { bdf:[], sb:[] }
 };
 let cbCount = 0;
+const chartInstances = {};
 
 // ── JSONP ──────────────────────────────────────────────────────
 function jsonp(params) {
@@ -1262,7 +1263,6 @@ function renderGastosPage() {
 }
 
 // ── CHART LOGIC ────────────────────────────────────────────────
-const chartInstances = {};
 
 function getMonthlyStats(bar) {
   const byMonth = {};
