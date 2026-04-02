@@ -430,12 +430,15 @@ let state = {
 };
 let cbCount = 0;
 const chartInstances = {};
+let gastoRowCount = {bdf: 0, sb: 0};
+let dashChartMetric = 'ventas';
+let barChartMetric = {bdf:'ventas', sb:'ventas'};
 
 // ── JSONP ──────────────────────────────────────────────────────
 function jsonp(params) {
   return new Promise((resolve, reject) => {
     const cbName = '_cb' + (++cbCount);
-    const timeout = setTimeout(() => { delete window[cbName]; reject(new Error('Timeout')); }, 15000);
+    const timeout = setTimeout(() => { delete window[cbName]; reject(new Error('Timeout')); }, 30000);
     window[cbName] = (data) => {
       clearTimeout(timeout); delete window[cbName];
       const el = document.getElementById(cbName); if(el) el.remove();
@@ -563,34 +566,33 @@ window.addEventListener('online', () => {
 async function loadAll() {
   syncDot('loading','Cargando...');
   try {
-    const [dBdf,dSb,pBdf,pSb,fBdf,fSb] = await Promise.all([
-      jsonp({action:'getAll',sheet:'DIARIO_BDF'}),
-      jsonp({action:'getAll',sheet:'DIARIO_SB'}),
-      jsonp({action:'getAll',sheet:'PERSONAL_BDF'}),
-      jsonp({action:'getAll',sheet:'PERSONAL_SB'}),
-      jsonp({action:'getAll',sheet:'RESUMEN_FOOD_BDF'}),
-      jsonp({action:'getAll',sheet:'RESUMEN_FOOD_SB'}),
-    ]);
+    syncDot('loading','Cargando diarios...');
+    const dBdf = await jsonp({action:'getAll',sheet:'DIARIO_BDF'});
+    const dSb  = await jsonp({action:'getAll',sheet:'DIARIO_SB'});
+    syncDot('loading','Cargando personal...');
+    const pBdf = await jsonp({action:'getAll',sheet:'PERSONAL_BDF'});
+    const pSb  = await jsonp({action:'getAll',sheet:'PERSONAL_SB'});
+    syncDot('loading','Cargando food...');
+    const fBdf = await jsonp({action:'getAll',sheet:'RESUMEN_FOOD_BDF'});
+    const fSb  = await jsonp({action:'getAll',sheet:'RESUMEN_FOOD_SB'});
     state.diario.bdf = dBdf.map(toNum);
-    state.diario.sb = dSb.map(toNum);
+    state.diario.sb  = dSb.map(toNum);
     state.personal.bdf = pBdf.map(toNum);
-    state.personal.sb = pSb.map(toNum);
+    state.personal.sb  = pSb.map(toNum);
     state.food.bdf = fBdf.map(toNum);
-    state.food.sb = fSb.map(toNum);
-    // Guardar copia local
+    state.food.sb  = fSb.map(toNum);
     localStorage.setItem('cbpro_cache', JSON.stringify(state));
     syncDot('ok','Sincronizado ✓');
     updateQueueBadge();
     render();
   } catch(e) {
     syncDot('error','Sin conexión');
-    // Cargar desde caché local
     try {
       const cached = JSON.parse(localStorage.getItem('cbpro_cache')||'null');
       if(cached) {
-        state.diario = cached.diario||{bdf:[],sb:[]};
+        state.diario   = cached.diario||{bdf:[],sb:[]};
         state.personal = cached.personal||{bdf:[],sb:[]};
-        state.food = cached.food||{bdf:[],sb:[]};
+        state.food     = cached.food||{bdf:[],sb:[]};
         toast('Sin conexión — mostrando datos guardados localmente', 'error');
         render();
       }
@@ -650,7 +652,6 @@ function setBtnLoading(id,l){const b=g(id);if(!b)return;b.disabled=l;b.textConte
 
 // ── PREVIEW ────────────────────────────────────────────────────
 // ── GASTOS DINÁMICOS ───────────────────────────────────────────
-let gastoRowCount = {bdf: 0, sb: 0};
 
 function addGastoRow(bar, gasto) {
   const p = bar==='bdf'?'dbdf':'dsb';
@@ -1346,9 +1347,6 @@ function drawChart(canvasId, datasets, labels, metric) {
     }
   });
 }
-
-let dashChartMetric = 'ventas';
-let barChartMetric = {bdf:'ventas', sb:'ventas'};
 
 function setDashChart(metric, btn) {
   dashChartMetric = metric;
